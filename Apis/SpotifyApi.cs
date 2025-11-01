@@ -141,12 +141,37 @@ namespace Downloader.Apis
                 i++;
             }
 
-            var songsData = JsonSerializer.Deserialize<GetSongsResponse>(await (await sendApiRequest("/tracks", HttpMethod.Get, new([ new("ids", String.Join(",", ids)) ]))).Content.ReadAsStringAsync());
-            var songs = new SpotifySong[songsData.tracks.Length];
-            // TODO split if more than 50 ids
+            List<GetSongsResponse.Track> allTracks = new();
+
+            List<List<string>> batches = new();
 
             i = 0;
-            foreach (var songData in songsData.tracks)
+            foreach (string id in ids) {
+                if (batches.Count == 0)
+                {
+                    batches.Add(new List<string>());
+                    batches[0].Add(id);
+                }
+                else if (batches[i].Count < 50)
+                {
+                    batches[i].Add(id);
+                } else
+                {
+                    batches.Add(new List<string>());
+                    i++;
+                    batches[i].Add(id);
+                }
+            }
+
+            foreach (var batch in batches)
+            {
+                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(await (await sendApiRequest("/tracks", HttpMethod.Get, new([new("ids", String.Join(",", batch))]))).Content.ReadAsStringAsync())?.tracks ?? []);
+            }
+
+            var songs = new SpotifySong[allTracks.Count];
+
+            i = 0;
+            foreach (var songData in allTracks)
             {
                 songs[i] = new SpotifySong(
                     songData.album.name,
