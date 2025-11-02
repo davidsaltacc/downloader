@@ -13,7 +13,7 @@ namespace Downloader.Apis
     internal class YoutubeMusicApi
     {
 
-        public static async Task<YoutubeMusicSong> findSong(SpotifySong songData) {
+        public static async Task<YoutubeMusicSong?> findSong(Song songData) {
 
             string artistsNameJoined = string.Join(" ", songData.Artists);
 
@@ -46,6 +46,11 @@ namespace Downloader.Apis
             foundSongs.AddRange(results[2]);
             foundSongs = [.. foundSongs.Distinct()];
 
+            if (foundSongs.Count == 0)
+            {
+                return null;
+            }
+
             var finalSong = foundSongs.OrderBy(song => -(
                 Fuzz.Ratio(song.Title, songData.Title) +
                 Fuzz.Ratio(song.Album, songData.Album) +
@@ -73,12 +78,12 @@ namespace Downloader.Apis
 
 {
     ""query"": """ + query + @""",
-    ""params"": """ + searchParams + @"""
+    ""params"": """ + searchParams + @""",
     ""context"": {
         ""user"": {},
         ""client"": {
             ""clientName"": ""WEB_REMIX"",
-            ""clientVersion"": ""1." + DateTime.Now.ToString("yyyyMMdd") + @""".01.00""
+            ""clientVersion"": ""1." + DateTime.Now.ToString("yyyyMMdd") + @".01.00""
         }
     }
 }
@@ -88,21 +93,32 @@ namespace Downloader.Apis
             var response = await MainWindow.httpClient.PostAsync("https://music.youtube.com/youtubei/v1/search/?alt=json", new StringContent(postData));
             var data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
 
-            var results = data?["content"]?["tabbedSearchResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["sectionListRenderer"]?["contents"]?[0]?["musicShelfRenderer"]?["contents"];
+            var contents = data?["contents"]?["tabbedSearchResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["sectionListRenderer"]?["contents"];
+            int musicShelfIndex = 0;
+            int i = 0;
+            foreach (var item in contents?.AsArray() ?? [])
+            {
+                if (item?["musicShelfRenderer"] != null)
+                {
+                    musicShelfIndex = i;
+                }
+                i++;
+            }
+            var results = contents?[musicShelfIndex]?["musicShelfRenderer"]?["contents"];
 
             List<YoutubeMusicSong> songsReturned = [];
 
             foreach (var song in results?.AsArray() ?? [])
             {
 
-                var columns = song?["musicResponsiveListItemRenderer"]?["flexColumns"]?.AsArray().Select(column => column?["musicResponsiveListItemFlexColumnRenderer"]?["text"]?["runs"]?[0]).ToArray();
-                var title = columns?[0]?["text"]?.ToString();
-                var videoId = columns?[0]?["navigationEndpoint"]?["watchEndpoint"]?["videoId"];
+                var columns = song?["musicResponsiveListItemRenderer"]?["flexColumns"]?.AsArray().Select(column => column?["musicResponsiveListItemFlexColumnRenderer"]?["text"]?["runs"]).ToArray();
+                var title = columns?[0]?[0]?["text"]?.ToString();
+                var videoId = columns?[0]?[0]?["navigationEndpoint"]?["watchEndpoint"]?["videoId"];
 
                 List<string> artists = [];
                 string? album = null;
 
-                foreach (var part in columns?[1]?["text"]?["runs"]?.AsArray() ?? [])
+                foreach (var part in columns?[1]?.AsArray() ?? [])
                 {
                     var text = part?["text"]?.ToString();
                     var type = part?["navigationEndpoint"]?["browseEndpoint"]?["browseEndpointContextSupportedConfigs"]?["browseEndpointContextMusicConfig"]?["pageType"]?.ToString().ToLower();

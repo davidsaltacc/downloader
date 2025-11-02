@@ -17,8 +17,14 @@ namespace Downloader.Apis
 
         private static string? token = null;
 
-        public static async Task initDownloading()
+        public class TokenResponse
         {
+            public required string token_type { get; set; }
+            public required string access_token { get; set; }
+        }
+
+        public static async Task initDownloading()
+        { 
 
             var response = await MainWindow.httpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
             // if you make it public, i hope you don't mind if i use it. thank you spotdl 
@@ -46,9 +52,9 @@ namespace Downloader.Apis
                 Content = new StringContent("grant_type=client_credentials", Encoding.UTF8, "application/x-www-form-urlencoded")
             });
 
-            var tokenData = JsonSerializer.Deserialize<Dictionary<string, object>>(await responseAuth.Content.ReadAsStringAsync());
+            var tokenData = JsonSerializer.Deserialize<TokenResponse>(await responseAuth.Content.ReadAsStringAsync());
 
-            token = tokenData["token_type"] + " " + tokenData["access_token"];
+            token = tokenData?.token_type + " " + tokenData?.access_token;
 
         }
 
@@ -69,7 +75,7 @@ namespace Downloader.Apis
 
             Uri uri = new Uri("https://api.spotify.com/v1" + endpoint + "?" + qs.ToString());
 
-            HttpRequestMessage message = new HttpRequestMessage
+            var message = () => new HttpRequestMessage
             {
                 Method = method,
                 RequestUri = uri,
@@ -79,12 +85,12 @@ namespace Downloader.Apis
                 Content = content
             };
 
-            HttpResponseMessage response = await MainWindow.httpClient.SendAsync(message);
+            HttpResponseMessage response = await MainWindow.httpClient.SendAsync(message());
 
             int retries = 0;
             while (response.StatusCode == HttpStatusCode.TooManyRequests && retries < 5) {
                 Thread.Sleep(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
-                response = await MainWindow.httpClient.SendAsync(message);
+                response = await MainWindow.httpClient.SendAsync(message());
                 retries++;
             }
 

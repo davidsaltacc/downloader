@@ -3,6 +3,7 @@ using downloader.Utils.Songs;
 using Downloader.Apis;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 
 namespace Downloader
@@ -58,8 +59,13 @@ namespace Downloader
 
                     foreach (Song song in songs)
                     {
-                        // TODO ytmApi.findSong
+                        var found = await YoutubeMusicApi.findSong(song);
+                        if (found != null) { 
+                            foundSongs.Add(found);
+                        }
                     }
+
+                    // TODO songs are there, now download with yt-dlp (download yt-dlp first? idk, need to implement the YtDlpApi class anyway)
 
                 } else
                 {
