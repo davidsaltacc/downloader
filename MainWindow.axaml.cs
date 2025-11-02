@@ -2,9 +2,6 @@ using Avalonia.Controls;
 using downloader.Utils.Songs;
 using Downloader.Apis;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Net.Http;
 
 namespace Downloader
@@ -46,23 +43,13 @@ namespace Downloader
                     } else if (uriResult.AbsolutePath.StartsWith("/album"))
                     {
                         songs = await SpotifyApi.getSongsInAlbum(URL);
-                        Debug.WriteLine(String.Join(", ", songs.Select(song => song.Title)));
                     }
                     else if (uriResult.AbsolutePath.StartsWith("/playlist"))
                     {
-                        try
-                        {
-                            songs = await SpotifyApi.getSongsInPlaylist(URL);
-                            Debug.WriteLine(String.Join(", ", songs.Select(song => song.Title)));
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine(ex.ToString());
-                        }
+                        songs = await SpotifyApi.getSongsInPlaylist(URL);
                     }
 
-                    // TODO convert all SpotifySongs to YoutubeSongs and download those using yt-dlp (convert using ffmpeg if installed (add option to download & install?))
-                    // fancy ui and settings and allthat idk
+
 
                 } else
                 {
