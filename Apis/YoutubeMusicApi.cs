@@ -1,6 +1,5 @@
-﻿
-using Avalonia.Controls;
-using downloader.Utils.Songs;
+﻿using downloader.Utils.Songs;
+using FuzzySharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,21 +13,46 @@ namespace Downloader.Apis
     internal class YoutubeMusicApi
     {
 
-        public static async /* Task<YoutubeMusicSong> TODO */ void findSong(SpotifySong songData) {
+        public static async Task<YoutubeMusicSong> findSong(SpotifySong songData) {
 
             string artistsNameJoined = string.Join(" ", songData.Artists);
 
             string songTitleClean = Regex.Replace(songData.Title, @"[^\p{L}]+", " ").Trim();
+            string albumTitleClean = Regex.Replace(songData.Album, @"[^\p{L}]+", " ").Trim();
             string artistsNamesClean = Regex.Replace(artistsNameJoined, @"[^\p{L}]+", " ").Trim();
 
             if (songTitleClean.Length < songData.Title.Length * 0.4)
             {
                 songTitleClean = songData.Title;
             }
+            if (albumTitleClean.Length < songData.Album.Length * 0.4)
+            {
+                albumTitleClean = songData.Album;
+            }
             if (artistsNamesClean.Length < artistsNameJoined.Length * 0.6)
             {
                 artistsNamesClean = artistsNameJoined;
             }
+
+            var results = await Task.WhenAll([ 
+                search(artistsNamesClean + " " + songTitleClean, SearchFor.Songs),
+                search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
+                search(artistsNameJoined + " " + songData.Title, SearchFor.Songs)
+            ]);
+
+            List<YoutubeMusicSong> foundSongs = [];
+            foundSongs.AddRange(results[0]);
+            foundSongs.AddRange(results[1]);
+            foundSongs.AddRange(results[2]);
+            foundSongs = [.. foundSongs.Distinct()];
+
+            var finalSong = foundSongs.OrderBy(song => -(
+                Fuzz.Ratio(song.Title, songData.Title) +
+                Fuzz.Ratio(song.Album, songData.Album) +
+                Fuzz.Ratio(string.Join(" ", song.Artists), artistsNameJoined)
+            )).ToArray()[0];
+
+            return new(songData.Album, songData.Artists, songData.Title, songData.indexOnDisk, songData.diskIndex, songData.releaseYear, songData.imageUrl, finalSong.youtubeSongUrl);
 
         }
 

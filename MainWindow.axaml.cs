@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using downloader.Utils.Songs;
 using Downloader.Apis;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace Downloader
@@ -40,16 +41,25 @@ namespace Downloader
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
                         songs = await SpotifyApi.getSongsFromURLs([ URL ]);
-                    } else if (uriResult.AbsolutePath.StartsWith("/album"))
+                    } 
+                    else if (uriResult.AbsolutePath.StartsWith("/album"))
                     {
                         songs = await SpotifyApi.getSongsInAlbum(URL);
                     }
                     else if (uriResult.AbsolutePath.StartsWith("/playlist"))
                     {
                         songs = await SpotifyApi.getSongsInPlaylist(URL);
+                    } else
+                    {
+                        songs = [];
                     }
 
+                    List<YoutubeMusicSong> foundSongs = [];
 
+                    foreach (Song song in songs)
+                    {
+                        // TODO ytmApi.findSong
+                    }
 
                 } else
                 {
