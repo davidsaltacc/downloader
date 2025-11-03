@@ -4,6 +4,7 @@ using Downloader.Apis;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 
 namespace Downloader
@@ -18,8 +19,19 @@ namespace Downloader
             InitializeComponent();
         }
 
-        private async void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
+            try
+            {
+                StartDownload();
+            } catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+
+        private async void StartDownload() 
+        { 
 
             string URL = DownloadURLBox.Text ?? "";
 
@@ -39,6 +51,8 @@ namespace Downloader
                     await SpotifyApi.initDownloading();
                     Song[] songs;
 
+                    StatusText.Text = "Getting songs from spotify";
+
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
                         songs = await SpotifyApi.getSongsFromURLs([ URL ]);
@@ -55,17 +69,45 @@ namespace Downloader
                         songs = [];
                     }
 
+                    StatusText.Text = "Starting search for matches";
+
                     List<YoutubeMusicSong> foundSongs = [];
 
                     foreach (Song song in songs)
                     {
+                        StatusText.Text = "Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title;
                         var found = await YoutubeMusicApi.findSong(song);
-                        if (found != null) { 
+                        if (found != null)
+                        {
                             foundSongs.Add(found);
                         }
                     }
 
-                    // TODO songs are there, now download with yt-dlp (download yt-dlp first? idk, need to implement the YtDlpApi class anyway)
+                    if (!FFmpegApi.ensureFFmpegInstalled())
+                    {
+                        StatusText.Text = "Downloading FFmpeg";
+                        await FFmpegApi.downloadLatestFFmpeg();
+                    }
+                    if (!await YtDlpApi.ensureLatestYtDlpInstalled())
+                    {
+                        StatusText.Text = "Downloading yt-dlp";
+                        await YtDlpApi.downloadLatestYtDlp();
+                    }
+
+                    StatusText.Text = "Downloading songs";
+
+                    List<string> downloadedFilenames = [];
+                    Directory.CreateDirectory("./downloaded");
+
+                    foreach (YoutubeMusicSong song in foundSongs)
+                    {
+                        StatusText.Text = "Downloading " + String.Join(", ", song.Artists) + " - " + song.Title;
+                        downloadedFilenames.Add(await YtDlpApi.downloadSong(song, "./downloaded"));
+                    }
+
+                    StatusText.Text = "Done with something idk";
+
+                    // TODO rename and add metadata, create m3u8 playlist, final touches etc
 
                 } else
                 {

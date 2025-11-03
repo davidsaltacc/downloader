@@ -171,6 +171,7 @@ namespace Downloader.Apis
             foreach (var batch in batches)
             {
                 allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(await (await sendApiRequest("/tracks", HttpMethod.Get, new([new("ids", String.Join(",", batch))]))).Content.ReadAsStringAsync())?.tracks ?? []);
+                // TODO if error here - more specifically, "HTTP 400 - invalid base62 id" - then the song/album/playlist doesnt exist
             }
 
             var songs = new SpotifySong[allTracks.Count];
