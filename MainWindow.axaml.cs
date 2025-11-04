@@ -1,11 +1,17 @@
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using downloader.Utils;
 using downloader.Utils.Songs;
 using Downloader.Apis;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Downloader
 {
@@ -27,10 +33,11 @@ namespace Downloader
             } catch (Exception ex)
             {
                 Debug.WriteLine(ex);
+                // TODO log to ui, delete ./downloaded/ folder
             }
         }
 
-        private async void StartDownload() 
+        private async Task StartDownload() 
         { 
 
             string URL = DownloadURLBox.Text ?? "";
@@ -39,19 +46,19 @@ namespace Downloader
 
             if (!validURL)
             {
-                StatusText.Text = "Invalid URL";
+                setStatusText("Invalid URL");
             } else
             { 
                 if (
                     uriResult.Host.ToLower().Contains("spotify")
                 )
                 {
-                    StatusText.Text = "Starting";
+                    setStatusText("Starting");
 
                     await SpotifyApi.initDownloading();
                     Song[] songs;
 
-                    StatusText.Text = "Getting songs from spotify";
+                    setStatusText("Getting songs from spotify");
 
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
@@ -69,13 +76,13 @@ namespace Downloader
                         songs = [];
                     }
 
-                    StatusText.Text = "Starting search for matches";
+                    setStatusText("Starting search for matches");
 
                     List<YoutubeMusicSong> foundSongs = [];
 
                     foreach (Song song in songs)
                     {
-                        StatusText.Text = "Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title;
+                        setStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title);
                         var found = await YoutubeMusicApi.findSong(song);
                         if (found != null)
                         {
@@ -83,38 +90,91 @@ namespace Downloader
                         }
                     }
 
-                    if (!FFmpegApi.ensureFFmpegInstalled())
+                    if (!await FFmpegApi.ensureFFmpegInstalled())
                     {
-                        StatusText.Text = "Downloading FFmpeg";
+                        setStatusText("Downloading FFmpeg");
                         await FFmpegApi.downloadLatestFFmpeg();
                     }
                     if (!await YtDlpApi.ensureLatestYtDlpInstalled())
                     {
-                        StatusText.Text = "Downloading yt-dlp";
+                        setStatusText("Downloading yt-dlp");
                         await YtDlpApi.downloadLatestYtDlp();
                     }
 
-                    StatusText.Text = "Downloading songs";
+                    setStatusText("Downloading songs");
 
                     List<string> downloadedFilenames = [];
                     Directory.CreateDirectory("./downloaded");
 
                     foreach (YoutubeMusicSong song in foundSongs)
                     {
-                        StatusText.Text = "Downloading " + String.Join(", ", song.Artists) + " - " + song.Title;
+                        setStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title);
                         downloadedFilenames.Add(await YtDlpApi.downloadSong(song, "./downloaded"));
                     }
 
-                    StatusText.Text = "Done with something idk";
+                    setStatusText("Adding metadata and finishing");
 
-                    // TODO rename and add metadata, create m3u8 playlist, final touches etc
+                    List<string> newFilenames = [];
+                    for (int j = 0; j < downloadedFilenames.Count; j++)
+                    {
+                        newFilenames.Add("./downloaded/" + String.Join(", ", foundSongs[j].Artists) + " - " + foundSongs[j].Title + "." + downloadedFilenames[j].Split(".").Last());
+                        Regex.Replace(newFilenames[j], @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
+                    }
+                    for (int j = newFilenames.Count - 1; j >= 0; j--)
+                    {
+                        var dupe = new List<string>(newFilenames);
+                        dupe.RemoveAt(j);
+                        if (dupe.Contains(newFilenames[j]))
+                        {
+                            newFilenames[j] += " (2)";
+                        }
+                    }
+
+                    int i = 0;
+                    foreach (YoutubeMusicSong song in foundSongs)
+                    {
+
+                        setStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        FileUtils.applyID3ToFile(downloadedFilenames[i], song, song.youtubeSongUrl);
+
+                        setStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        File.Move(downloadedFilenames[i], newFilenames[i]);
+
+                        i++;
+                    }
+
+                    setStatusText("Writing playlist");
+
+                    var playlist = "#EXTM3U";
+                    foreach (var name in newFilenames)
+                    {
+                        playlist += "\n" + Path.GetFileName(name);
+                    }
+
+                    File.WriteAllText("./downloaded/! playlist.m3u8", playlist);
+
+                    setStatusText("Done");
+
+                    // parallel song processing, then tackle all quality of life
 
                 } else
                 {
-                    StatusText.Text = "Must be a Spotify URL";
+                    setStatusText("Must be a Spotify URL");
                 }
             }
             
         }
+
+        public static void setStatusText(string text)
+        {
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                {
+                    ((MainWindow)desktop.MainWindow).StatusText.Text = text;
+                }
+            });
+        }
+
     }
 }

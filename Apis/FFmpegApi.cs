@@ -9,7 +9,7 @@ namespace Downloader.Apis
     internal class FFmpegApi
     {
 
-        public static bool ensureFFmpegInstalled()
+        public static async Task<bool> ensureFFmpegInstalled()
         {
             try
             {
@@ -20,7 +20,7 @@ namespace Downloader.Apis
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                process?.WaitForExit();
+                await process?.WaitForExitAsync();
                 return true;
             }
             catch {

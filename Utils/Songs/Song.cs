@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Linq;
 
 namespace downloader.Utils.Songs
 {
-    public class Song(string album, string[] artists, string title, int indexOnDisk, int diskIndex, int releaseYear, string imageUrl) : IEquatable<Song>
+    public class Song(string album, string[] artists, string title, int indexOnDisk, int diskIndex, int releaseYear, string imageUrl)
     {
         public readonly string Album = album;
         public readonly string[] Artists = artists;
@@ -12,17 +13,36 @@ namespace downloader.Utils.Songs
         public readonly int releaseYear = releaseYear;
         public readonly string imageUrl = imageUrl;
 
-        public bool Equals(Song? other)
+        public static bool operator == (Song? left, Song? right)
         {
-            return other != null && (
-                this.Album == other.Album &&
-                this.Artists == other.Artists &&
-                this.Title == other.Title &&
-                this.indexOnDisk == other.indexOnDisk &&
-                this.diskIndex == other.diskIndex &&
-                this.releaseYear == other.releaseYear &&
-                this.imageUrl == other.imageUrl
+            return right is not null && left is not null && (
+                left.Album == right.Album &&
+                left.Artists.SequenceEqual(right.Artists) &&
+                left.Title == right.Title &&
+                left.indexOnDisk == right.indexOnDisk &&
+                left.diskIndex == right.diskIndex &&
+                left.releaseYear == right.releaseYear &&
+                left.imageUrl == right.imageUrl
             );
+        }
+
+        public static bool operator !=(Song? left, Song? right) => !(left == right);
+
+        public override int GetHashCode() => (Album, String.Join(", ", Artists), Title, indexOnDisk, diskIndex, releaseYear, imageUrl).GetHashCode();
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(obj, null))
+            {
+                return false;
+            }
+
+            return this == (Song) obj;
         }
     }
 

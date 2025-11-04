@@ -1,14 +1,16 @@
 ﻿
+using Avalonia.Controls.ApplicationLifetimes;
 using downloader.Utils;
 using downloader.Utils.Songs;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Downloader.Apis
 {
@@ -31,8 +33,8 @@ namespace Downloader.Apis
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                string? version = process?.StandardOutput.ReadLine();
-                process?.WaitForExit();
+                string? version = await process?.StandardOutput.ReadLineAsync();
+                await process?.WaitForExitAsync();
                 installed = true;
 
                 var response = await MainWindow.httpClient.SendAsync(new HttpRequestMessage
@@ -64,17 +66,15 @@ namespace Downloader.Apis
 
             var type = "mp3"; // mp3 or aac
 
-            var randomFileNameBytes = new byte[8];
-            Random.Shared.NextBytes(randomFileNameBytes);
-            var randomFileName = Convert.ToHexString(randomFileNameBytes);
-            var fullFilePath = Path.Join(folder, randomFileName + "." + type).Replace("\\", "/");
+            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.youtubeSongUrl).Query).Get("v") + "." + type).Replace("\\", "/");
 
-            using var process = new Process{
+            using var process = new Process
+            {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --no-part --progress -o \"{fullFilePath}\" --progress -t {type} {song.youtubeSongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --no-part --newline --progress -o \"{fullFilePath}\" --progress -t {type} {song.youtubeSongUrl}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -84,23 +84,22 @@ namespace Downloader.Apis
 
             process.Start();
 
-            // i think in stderr, not stdout:
-            //
-            //[download] 0.0 % of    2.96MiB at  Unknown B/ s ETA Unknown
-            //[download]   0.1 % of    2.96MiB at  Unknown B/ s ETA Unknown
-            //[download]   0.2 % of    2.96MiB at    1.74MiB / s ETA 00:01
-            //[download]   0.5 % of    2.96MiB at    3.72MiB / s ETA 00:00
-            //[download]   1.0 % of    2.96MiB at    7.69MiB / s ETA 00:00
-            //[download]   2.1 % of    2.96MiB at    2.51MiB / s ETA 00:01
-            //[download]   4.2 % of    2.96MiB at    2.00MiB / s ETA 00:01
-            //[download]   8.4 % of    2.96MiB at    2.59MiB / s ETA 00:01
-            //[download]  16.8 % of    2.96MiB at    3.12MiB / s ETA 00:00
-            //[download]  33.7 % of    2.96MiB at    2.65MiB / s ETA 00:00
-            //[download]  67.5 % of    2.96MiB at    3.14MiB / s ETA 00:00
-            //[download] 100.0 % of    2.96MiB at    2.93MiB / s ETA 00:00
-            //[download] 100 % of    2.96MiB in 00:00:01 at 2.66MiB / s
+            while (true)
+            {
+                var line = await process.StandardOutput.ReadLineAsync();
+                if (line == null)
+                {
+                    break;
+                }
+                var data = Regex.Replace(line ?? "", @"\s+", " ").Split(" ");
+                if (!float.TryParse(data[1].Replace("%", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var percent))
+                {
+                    continue;
+                }
+                MainWindow.setStatusText("Downloaded " + ((int) Math.Round(percent)).ToString() + "%");
+            }
 
-            // TODO nice ui logging
+            await process.WaitForExitAsync();
 
             return fullFilePath;
 

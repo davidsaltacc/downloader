@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TagLib.Ape;
 
 namespace Downloader.Apis
 {
@@ -17,9 +18,9 @@ namespace Downloader.Apis
 
             string artistsNameJoined = string.Join(" ", songData.Artists);
 
-            string songTitleClean = Regex.Replace(songData.Title, @"[^\p{L}]+", " ").Trim();
-            string albumTitleClean = Regex.Replace(songData.Album, @"[^\p{L}]+", " ").Trim();
-            string artistsNamesClean = Regex.Replace(artistsNameJoined, @"[^\p{L}]+", " ").Trim();
+            string songTitleClean = Regex.Replace(songData.Title, @"[^\p{L}\p{N}]+", " ").Trim();
+            string albumTitleClean = Regex.Replace(songData.Album, @"[^\p{L}\p{N}]+", " ").Trim();
+            string artistsNamesClean = Regex.Replace(artistsNameJoined, @"[^\p{L}\p{N}]+", " ").Trim();
 
             if (songTitleClean.Length < songData.Title.Length * 0.4)
             {
@@ -40,24 +41,33 @@ namespace Downloader.Apis
                 search(artistsNameJoined + " " + songData.Title, SearchFor.Songs)
             ]);
 
-            List<YoutubeMusicSong> foundSongs = [];
-            foundSongs.AddRange(results[0]);
-            foundSongs.AddRange(results[1]);
-            foundSongs.AddRange(results[2]);
-            foundSongs = [.. foundSongs.Distinct()];
+            var elementPositions = new Dictionary<YoutubeMusicSong, (int count, int firstIndex)>();
 
-            if (foundSongs.Count == 0)
+            for (int i = 0; i < 3; i++)
             {
-                return null;
+                var list = results[i];
+                for (int j = 0; j < list.Count; j++)
+                {
+                    var item = list[j];
+                    if (!elementPositions.TryGetValue(item, out var value))
+                    {
+                        elementPositions[item] = (1, j);
+                    }
+                    else
+                    {
+                        elementPositions[item] = (value.count + 1, Math.Min(value.firstIndex, j));
+                    }
+                }
             }
 
-            var finalSong = foundSongs.OrderBy(song => -(
-                Fuzz.Ratio(song.Title, songData.Title) +
-                Fuzz.Ratio(song.Album, songData.Album) +
-                Fuzz.Ratio(string.Join(" ", song.Artists), artistsNameJoined)
-            )).ToArray()[0];
+            var firstCommon = elementPositions
+                .Where(kv => kv.Value.count >= 2)
+                .OrderBy(kv => kv.Value.firstIndex)
+                .Select(kv => kv.Key)
+                .FirstOrDefault();
 
-            return new(songData.Album, songData.Artists, songData.Title, songData.indexOnDisk, songData.diskIndex, songData.releaseYear, songData.imageUrl, finalSong.youtubeSongUrl);
+            var finalSong = firstCommon;
+            return finalSong == null ? null : new(songData.Album, songData.Artists, songData.Title, songData.indexOnDisk, songData.diskIndex, songData.releaseYear, songData.imageUrl, finalSong.youtubeSongUrl);
 
         }
 
