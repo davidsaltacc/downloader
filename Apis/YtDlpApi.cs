@@ -67,7 +67,7 @@ namespace Downloader.Apis
             await FileUtils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
         }
 
-        public static async Task<string> DownloadSong(YoutubeMusicSong song, string folder)
+        public static async Task<string> downloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
         {
 
             const string type = "mp3"; // mp3 or aac
@@ -102,7 +102,7 @@ namespace Downloader.Apis
                 {
                     continue;
                 }
-                MainWindow.SetStatusText("Downloaded " + ((int) Math.Round(percent)) + "%");
+                onProgressUpdate((int) Math.Round(percent));
             }
 
             await process.WaitForExitAsync();

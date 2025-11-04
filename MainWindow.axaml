@@ -25,6 +25,11 @@
                 <TextBox Watermark="Input URL" x:Name="DownloadURLBox"></TextBox>
                 <Button Click="StartDownload_Click">Start Downloading</Button>
                 <TextBlock x:Name="StatusText"></TextBlock>
+                <TextBlock x:Name="StatusText1"></TextBlock>
+                <TextBlock x:Name="StatusText2"></TextBlock>
+                <TextBlock x:Name="StatusText3"></TextBlock>
+                <TextBlock x:Name="StatusText4"></TextBlock>
+                <TextBlock x:Name="StatusText5"></TextBlock>
             </StackPanel>
         </Border>
 

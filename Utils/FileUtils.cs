@@ -44,7 +44,7 @@ namespace downloader.Utils
             }
         }
 
-        public static void ApplyId3ToFile(string file, Song song, string description = "")
+        public static void ApplyId3ToFile(string file, Song song, string comment = "")
         {
 
             Tag.DefaultVersion = 3;
@@ -54,7 +54,7 @@ namespace downloader.Utils
             taggedFile.Tag.Title = song.Title;
             taggedFile.Tag.Album = song.Album;
             taggedFile.Tag.Performers = song.Artists;
-            taggedFile.Tag.Description = "";
+            taggedFile.Tag.Comment = "";
             taggedFile.Tag.Track = (uint) song.IndexOnDisk;
             taggedFile.Tag.Disc = (uint) song.DiskIndex;
             taggedFile.Tag.Year = (uint) song.ReleaseYear;
