@@ -2,11 +2,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:Downloader"
         mc:Ignorable="d" 
         d:DesignWidth="400" d:DesignHeight="300"
         MinWidth="400" MinHeight="300"
         Width="400" Height="300"
         x:Class="Downloader.MainWindow"
+        x:DataType="local:MainWindow"
         Title="downloader"
 		ExtendClientAreaToDecorationsHint="True"
 		TransparencyLevelHint="AcrylicBlur"
@@ -23,7 +25,7 @@
         <Border Grid.Row="1" Padding="10" Background="#7f101010">
             <StackPanel>
                 <TextBox Watermark="Input URL" x:Name="DownloadURLBox"></TextBox>
-                <Button Click="StartDownload_Click">Start Downloading</Button>
+                <Button Click="StartDownload_Click" IsEnabled="{Binding !IsBusy}">Start Downloading</Button>
                 <TextBlock x:Name="StatusText"></TextBlock>
                 <TextBlock x:Name="StatusText1"></TextBlock>
                 <TextBlock x:Name="StatusText2"></TextBlock>

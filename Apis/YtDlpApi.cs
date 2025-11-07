@@ -20,8 +20,8 @@ namespace Downloader.Apis
         public static async Task<bool> EnsureLatestYtDlpInstalled()
         {
 
-            bool installed = false;
-            bool latest = false;
+            var installed = false;
+            var latest = false;
 
             try
             {
@@ -67,7 +67,7 @@ namespace Downloader.Apis
             await FileUtils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
         }
 
-        public static async Task<string> downloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
+        public static async Task<string> DownloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
         {
 
             const string type = "mp3"; // mp3 or aac
@@ -97,7 +97,7 @@ namespace Downloader.Apis
                 {
                     break;
                 }
-                var data = Regex.Replace(line ?? "", @"\s+", " ").Split(" ");
+                var data = Regex.Replace(line, @"\s+", " ").Split(" ");
                 if (!float.TryParse(data[1].Replace("%", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var percent))
                 {
                     continue;

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -20,18 +21,19 @@ namespace Downloader
     public partial class MainWindow : Window
     {
 
-        public static readonly HttpClient httpClient = new();
+        public static readonly HttpClient HttpClient = new();
 
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = this;
         }
 
         private void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             try
             {
-                StartDownload();
+                Task.Run(async () => await StartDownload());
             } catch (Exception ex)
             {
                 Debug.WriteLine(ex);
@@ -40,51 +42,62 @@ namespace Downloader
             }
         }
 
+        public static readonly StyledProperty<bool> IsBusyProperty = AvaloniaProperty.Register<MainWindow, bool>(nameof(IsBusy));
+        public bool IsBusy
+        {
+            get => GetValue(IsBusyProperty);
+            set => SetValue(IsBusyProperty, value);
+        }
+
         private async Task StartDownload() 
-        { 
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                IsBusy = true;
+            });
 
-            string URL = DownloadURLBox.Text ?? "";
+            var url = DownloadURLBox.Text ?? "";
 
-            bool validURL = Uri.TryCreate(URL, UriKind.Absolute, out Uri? uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+            var validUrl = Uri.TryCreate(url, UriKind.Absolute, out var uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
 
-            if (!validURL)
+            if (!validUrl)
             {
                 setStatusText("Invalid URL");
             } else
             { 
                 if (
-                    uriResult.Host.ToLower().Contains("spotify")
+                    uriResult?.Host.ToLower().Contains("spotify") ?? false
                 )
                 {
                     setStatusText("Starting");
 
-                    if (!await FFmpegApi.ensureFFmpegInstalled())
+                    if (!await FFmpegApi.EnsureFFmpegInstalled())
                     {
                         setStatusText("Downloading FFmpeg");
-                        await FFmpegApi.downloadLatestFFmpeg();
+                        await FFmpegApi.DownloadLatestFFmpeg();
                     }
-                    if (!await YtDlpApi.ensureLatestYtDlpInstalled())
+                    if (!await YtDlpApi.EnsureLatestYtDlpInstalled())
                     {
                         setStatusText("Downloading yt-dlp");
-                        await YtDlpApi.downloadLatestYtDlp();
+                        await YtDlpApi.DownloadLatestYtDlp();
                     }
 
-                    await SpotifyApi.initDownloading();
+                    await SpotifyApi.InitDownloading();
                     Song[] songs;
 
                     setStatusText("Getting songs from spotify");
 
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
-                        songs = await SpotifyApi.getSongsFromURLs([ URL ]);
+                        songs = await SpotifyApi.GetSongsFromURLs([ url ]); // TODO dont make playlist for single track
                     } 
                     else if (uriResult.AbsolutePath.StartsWith("/album"))
                     {
-                        songs = await SpotifyApi.getSongsInAlbum(URL);
+                        songs = await SpotifyApi.GetSongsInAlbum(url);
                     }
                     else if (uriResult.AbsolutePath.StartsWith("/playlist"))
                     {
-                        songs = await SpotifyApi.getSongsInPlaylist(URL);
+                        songs = await SpotifyApi.GetSongsInPlaylist(url);
                     } else
                     {
                         songs = [];
@@ -95,16 +108,16 @@ namespace Downloader
                     var semaphore = new SemaphoreSlim(5);
                     var availableSlots = new ConcurrentQueue<int>([0, 1, 2, 3, 4]);
                     var tasks = new List<Task<string?>>();
-                    usedFilenames = [];
+                    _usedFilenames = [];
 
-                    async Task<string?> startTask(Song song)
+                    async Task<string?> StartTask(Song song)
                     {
                         await semaphore.WaitAsync();
-                        availableSlots.TryDequeue(out int slotId);
+                        availableSlots.TryDequeue(out var slotId);
                         Exception? exc = null;
                         try
                         {
-                            var result = await processSong(song, slotId);
+                            var result = await ProcessSong(song, slotId);
                             return result;
                         }
                         catch (Exception ex)
@@ -126,11 +139,11 @@ namespace Downloader
                     foreach (var song in songs)
                     {
 
-                        tasks.Add(startTask(song));
+                        tasks.Add(StartTask(song));
 
                     }
 
-                    List<string> newFilenames = [.. await Task.WhenAll(tasks)];
+                    List<string?> newFilenames = [.. await Task.WhenAll(tasks)];
 
                     setStatusText("Writing playlist");
 
@@ -140,7 +153,7 @@ namespace Downloader
                         playlist += "\n" + Path.GetFileName(name);
                     }
 
-                    File.WriteAllText("./downloaded/! playlist.m3u8", playlist);
+                    await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
 
                     setStatusText("Done");
 
@@ -151,16 +164,21 @@ namespace Downloader
                     setStatusText("Must be a Spotify URL");
                 }
             }
-            
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                IsBusy = false;
+            });
+
         }
 
-        private static List<string> usedFilenames = [];
+        private static List<string> _usedFilenames = [];
 
-        public static async Task<string?> processSong(Song song, int slotId)
+        private static async Task<string?> ProcessSong(Song song, int slotId)
         {
 
-            setStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); // proper seperate logging for each queue spot
-            var found = await YoutubeMusicApi.findSong(song);
+            setStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
+            var found = await YoutubeMusicApi.FindSong(song);
             if (found == null)
             {
                 return null;
@@ -168,26 +186,28 @@ namespace Downloader
 
             Directory.CreateDirectory("./downloaded");
             setStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            var downloaded = await YtDlpApi.downloadSong(found, "./downloaded", percentage => 
+            var downloaded = await YtDlpApi.DownloadSong(found, "./downloaded", percentage => 
             {
-                setStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage.ToString() + "%", slotId);
+                setStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage + "%", slotId);
             });
 
             var newFilename = String.Join(", ", found.Artists) + " - " + found.Title + "." + downloaded.Split(".").Last();
             newFilename = "./downloaded/" + Regex.Replace(newFilename, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
-            int dupes = howManyDupes(usedFilenames, newFilename);
+            int dupes = howManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
             {
                 newFilename += $" ({dupes + 1})";
             }
-            usedFilenames.Add(newFilename);
+            _usedFilenames.Add(newFilename);
 
             setStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            FileUtils.applyID3ToFile(downloaded, found, found.youtubeSongUrl);
+            FileUtils.ApplyId3ToFile(downloaded, found, found.YoutubeSongUrl);
 
             setStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename);
 
+            setStatusText("");
+            
             return newFilename;
 
         }
