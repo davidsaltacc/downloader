@@ -33,11 +33,11 @@ namespace Downloader
         {
             try
             {
-                Task.Run(async () => await StartDownload());
+                StartDownload();
             } catch (Exception ex)
             {
                 Debug.WriteLine(ex);
-                setStatusText("Error occurred");
+                SetStatusText("Error occurred");
                 Directory.Delete("./downloaded", true);
             }
         }
@@ -62,30 +62,30 @@ namespace Downloader
 
             if (!validUrl)
             {
-                setStatusText("Invalid URL");
+                SetStatusText("Invalid URL");
             } else
             { 
                 if (
                     uriResult?.Host.ToLower().Contains("spotify") ?? false
                 )
                 {
-                    setStatusText("Starting");
+                    SetStatusText("Starting");
 
                     if (!await FFmpegApi.EnsureFFmpegInstalled())
                     {
-                        setStatusText("Downloading FFmpeg");
+                        SetStatusText("Downloading FFmpeg");
                         await FFmpegApi.DownloadLatestFFmpeg();
                     }
                     if (!await YtDlpApi.EnsureLatestYtDlpInstalled())
                     {
-                        setStatusText("Downloading yt-dlp");
+                        SetStatusText("Downloading yt-dlp");
                         await YtDlpApi.DownloadLatestYtDlp();
                     }
 
                     await SpotifyApi.InitDownloading();
                     Song[] songs;
 
-                    setStatusText("Getting songs from spotify");
+                    SetStatusText("Getting songs from spotify");
 
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
@@ -103,7 +103,7 @@ namespace Downloader
                         songs = [];
                     }
 
-                    setStatusText("Downloading");
+                    SetStatusText("Downloading");
 
                     var semaphore = new SemaphoreSlim(5);
                     var availableSlots = new ConcurrentQueue<int>([0, 1, 2, 3, 4]);
@@ -145,7 +145,7 @@ namespace Downloader
 
                     List<string?> newFilenames = [.. await Task.WhenAll(tasks)];
 
-                    setStatusText("Writing playlist");
+                    SetStatusText("Writing playlist");
 
                     var playlist = "#EXTM3U";
                     foreach (var name in newFilenames)
@@ -155,13 +155,13 @@ namespace Downloader
 
                     await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
 
-                    setStatusText("Done");
+                    SetStatusText("Done");
 
                     // TODO quality of life
 
                 } else
                 {
-                    setStatusText("Must be a Spotify URL");
+                    SetStatusText("Must be a Spotify URL");
                 }
             }
 
@@ -177,7 +177,7 @@ namespace Downloader
         private static async Task<string?> ProcessSong(Song song, int slotId)
         {
 
-            setStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
+            SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
             var found = await YoutubeMusicApi.FindSong(song);
             if (found == null)
             {
@@ -185,34 +185,34 @@ namespace Downloader
             }
 
             Directory.CreateDirectory("./downloaded");
-            setStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
+            SetStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             var downloaded = await YtDlpApi.DownloadSong(found, "./downloaded", percentage => 
             {
-                setStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage + "%", slotId);
+                SetStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage + "%", slotId);
             });
 
             var newFilename = String.Join(", ", found.Artists) + " - " + found.Title + "." + downloaded.Split(".").Last();
             newFilename = "./downloaded/" + Regex.Replace(newFilename, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
-            int dupes = howManyDupes(_usedFilenames, newFilename);
+            int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
             {
                 newFilename += $" ({dupes + 1})";
             }
             _usedFilenames.Add(newFilename);
 
-            setStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
+            SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             FileUtils.ApplyId3ToFile(downloaded, found, found.YoutubeSongUrl);
 
-            setStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
+            SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename);
 
-            setStatusText("");
+            SetStatusText("");
             
             return newFilename;
 
         }
 
-        private static int howManyDupes(List<string> names, string searchFor)
+        private static int HowManyDupes(List<string> names, string searchFor)
         {
 
             var listDupe = new List<string>(names);
@@ -230,13 +230,13 @@ namespace Downloader
 
         }
 
-        public static void setStatusText(string text, int taskId = -1)
+        public static void SetStatusText(string text, int taskId = -1)
         {
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
-                    var mw = ((MainWindow) desktop.MainWindow);
+                    var mw = (MainWindow) desktop.MainWindow;
                     switch (taskId)
                     {
                         default:
