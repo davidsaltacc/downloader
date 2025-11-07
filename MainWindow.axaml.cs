@@ -206,7 +206,7 @@ namespace Downloader
             SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename);
 
-            SetStatusText("");
+            SetStatusText("", slotId);
             
             return newFilename;
 
