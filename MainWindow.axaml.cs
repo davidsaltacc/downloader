@@ -151,7 +151,7 @@ namespace Downloader
                         playlist += "\n" + Path.GetFileName(name);
                     }
 
-                    File.WriteAllText("./downloaded/! playlist.m3u8", playlist);
+                    await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
 
                     setStatusText("Done");
 

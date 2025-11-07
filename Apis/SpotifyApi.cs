@@ -183,6 +183,7 @@ namespace Downloader.Apis
                     songData.album.name,
                     songData.artists.Select(artist => artist.name).ToArray(),
                     songData.name,
+                    songData.duration_ms,
                     songData.track_number,
                     songData.disc_number,
                     int.Parse(songData.album.release_date.Split("-")[0]),
