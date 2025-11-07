@@ -15,7 +15,7 @@ namespace Downloader.Apis
     internal class SpotifyApi
     {
 
-        private static string? token = null;
+        private static string? _token = null;
 
         public class TokenResponse
         {
@@ -23,16 +23,16 @@ namespace Downloader.Apis
             public required string access_token { get; set; }
         }
 
-        public static async Task initDownloading()
+        public static async Task InitDownloading()
         { 
 
-            var response = await MainWindow.httpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
+            var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
             // if you make it public, i hope you don't mind if i use it. thank you spotdl 
 
-            string clientId = "";
-            string clientSecret = "";
+            var clientId = "";
+            var clientSecret = "";
 
-            foreach (string line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
+            foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
                 var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
                 if (lineFormatted.StartsWith("\"client_id\":\"")) {
                     clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
@@ -43,7 +43,7 @@ namespace Downloader.Apis
                 }
             }
 
-            var responseAuth = await MainWindow.httpClient.SendAsync(new HttpRequestMessage{
+            var responseAuth = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage{
                 Method = HttpMethod.Post,
                 RequestUri = new Uri("https://accounts.spotify.com/api/token"),
                 Headers = {
@@ -54,54 +54,63 @@ namespace Downloader.Apis
 
             var tokenData = JsonSerializer.Deserialize<TokenResponse>(await responseAuth.Content.ReadAsStringAsync());
 
-            token = tokenData?.token_type + " " + tokenData?.access_token;
+            _token = tokenData?.token_type + " " + tokenData?.access_token;
 
         }
 
-        public static async Task<HttpResponseMessage> sendApiRequest(string endpoint, HttpMethod method, Dictionary<string, string> params_, HttpContent? content = null)
+        private static async Task<HttpResponseMessage> SendApiRequest(string endpoint, HttpMethod method,
+            Dictionary<string, string> parameters, HttpContent? content = null)
         {
 
-            if (token == null)
+            if (_token == null)
             {
                 throw new Exception("Tried to make spotify API call before intializing and obtaining token");
             }
 
             var qs = HttpUtility.ParseQueryString("?");
 
-            foreach (var item in params_)
+            foreach (var item in parameters)
             {
                 qs.Set(item.Key, item.Value);
             }
 
-            Uri uri = new Uri("https://api.spotify.com/v1" + endpoint + "?" + qs.ToString());
+            var uri = new Uri("https://api.spotify.com/v1" + endpoint + "?" + qs);
 
-            var message = () => new HttpRequestMessage
-            {
-                Method = method,
-                RequestUri = uri,
-                Headers = {
-                    { "authorization", token }
-                },
-                Content = content
-            };
+            var response = await MainWindow.HttpClient.SendAsync(CreateMessage());
 
-            HttpResponseMessage response = await MainWindow.httpClient.SendAsync(message());
-
-            int retries = 0;
+            var retries = 0;
             while (response.StatusCode == HttpStatusCode.TooManyRequests && retries < 5) {
-                Thread.Sleep(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
-                response = await MainWindow.httpClient.SendAsync(message());
+                if (response.Headers.RetryAfter == null)
+                {
+                    Thread.Sleep(5000);
+                } else {
+                    Thread.Sleep(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
+                }
+                response = await MainWindow.HttpClient.SendAsync(CreateMessage());
                 retries++;
             }
 
             return response;
+            
+            HttpRequestMessage CreateMessage()
+            {
+                return new HttpRequestMessage
+                {
+                    Method = method,
+                    RequestUri = uri,
+                    Headers = {
+                        { "authorization", _token }
+                    },
+                    Content = content
+                };
+            }
 
         }
 
-        public static string extractIdFromUrl(string url)
+        private static string? ExtractIdFromUrl(string url)
         {
-            Uri.TryCreate(url, UriKind.Absolute, out Uri? uriResult);
-            return uriResult.AbsolutePath.Split("/")[2];
+            Uri.TryCreate(url, UriKind.Absolute, out var uriResult);
+            return uriResult?.AbsolutePath.Split("/")[2];
         }
 
         public class GetSongsResponse { 
@@ -136,25 +145,25 @@ namespace Downloader.Apis
             public required Track[] tracks { get; set; }
         }
 
-        public static async Task<SpotifySong[]> getSongsFromURLs(string[] urls)
+        public static async Task<SpotifySong[]> GetSongsFromURLs(string[] urls)
         {
 
-            string[] ids = new string[urls.Length];
-            int i = 0;
-            foreach (string url in urls) {
-                ids[i] = extractIdFromUrl(url);
+            var ids = new string?[urls.Length];
+            var i = 0;
+            foreach (var url in urls) {
+                ids[i] = ExtractIdFromUrl(url);
                 i++;
             }
 
-            List<GetSongsResponse.Track> allTracks = new();
+            List<GetSongsResponse.Track> allTracks = [];
 
-            List<List<string>> batches = new();
+            List<List<string?>> batches = [];
 
             i = 0;
-            foreach (string id in ids) {
+            foreach (var id in ids) {
                 if (batches.Count == 0)
                 {
-                    batches.Add(new List<string>());
+                    batches.Add([]);
                     batches[0].Add(id);
                 }
                 else if (batches[i].Count < 50)
@@ -162,7 +171,7 @@ namespace Downloader.Apis
                     batches[i].Add(id);
                 } else
                 {
-                    batches.Add(new List<string>());
+                    batches.Add([]);
                     i++;
                     batches[i].Add(id);
                 }
@@ -170,7 +179,7 @@ namespace Downloader.Apis
 
             foreach (var batch in batches)
             {
-                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(await (await sendApiRequest("/tracks", HttpMethod.Get, new([new("ids", String.Join(",", batch))]))).Content.ReadAsStringAsync())?.tracks ?? []);
+                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(await (await SendApiRequest("/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("ids", String.Join(",", batch))]))).Content.ReadAsStringAsync())?.tracks ?? []);
                 // TODO if error here - more specifically, "HTTP 400 - invalid base62 id" - then the song/album/playlist doesnt exist
             }
 
@@ -211,24 +220,26 @@ namespace Downloader.Apis
             public required Track[] items { get; set; }
         }
 
-        public static async Task<SpotifySong[]> getSongsInAlbum(string albumUrl)
+        public static async Task<SpotifySong[]> GetSongsInAlbum(string albumUrl)
         {
-            List<string> urls = new();
+            List<string> urls = [];
 
-            async Task req(int offset)
+            await Request(0);
+            return await GetSongsFromURLs(urls.ToArray());
+
+            async Task Request(int offset)
             {
-                var songsData = JsonSerializer.Deserialize<GetSongsInAlbumResponse>(await (await sendApiRequest("/albums/" + extractIdFromUrl(albumUrl) + "/tracks", HttpMethod.Get, new([new("limit", "50"), new("offset", offset.ToString())]))).Content.ReadAsStringAsync());
-                urls.AddRange(songsData.items.Select(track => track.external_urls.spotify));
-
-                if (songsData.next != null)
+                var songsData = JsonSerializer.Deserialize<GetSongsInAlbumResponse>(await (await SendApiRequest("/albums/" + ExtractIdFromUrl(albumUrl) + "/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("limit", "50"), new KeyValuePair<string, string>("offset", offset.ToString())]))).Content.ReadAsStringAsync());
+                if (songsData != null)
                 {
-                    await req(offset + 50);
+                    urls.AddRange(songsData.items.Select(track => track.external_urls.spotify));
+
+                    if (songsData.next != null)
+                    {
+                        await Request(offset + 50);
+                    }
                 }
             }
-
-            await req(0);
-
-            return await getSongsFromURLs(urls.ToArray());
         }
 
         public class GetSongsInPlaylistResponse
@@ -252,24 +263,28 @@ namespace Downloader.Apis
             public required PlaylistTrack[] items { get; set; }
         }
 
-        public static async Task<SpotifySong[]> getSongsInPlaylist(string playlistUrl)
+        public static async Task<SpotifySong[]> GetSongsInPlaylist(string playlistUrl)
         {
-            List<string> urls = new();
+            List<string> urls = [];
 
-            async Task req(int offset)
+            await Request(0);
+
+            return await GetSongsFromURLs(urls.ToArray());
+
+            async Task Request(int offset)
             {
-                var songsData = JsonSerializer.Deserialize<GetSongsInPlaylistResponse>(await (await sendApiRequest("/playlists/" + extractIdFromUrl(playlistUrl) + "/tracks", HttpMethod.Get, new([new("limit", "50"), new("offset", offset.ToString())]))).Content.ReadAsStringAsync());
-                urls.AddRange(songsData.items.Select(playlistTrack => playlistTrack.track.external_urls.spotify));
-
-                if (songsData.next != null)
+                var songsData = JsonSerializer.Deserialize<GetSongsInPlaylistResponse>(await (await SendApiRequest("/playlists/" + ExtractIdFromUrl(playlistUrl) + "/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("limit", "50"), new KeyValuePair<string, string>("offset", offset.ToString())]))).Content.ReadAsStringAsync());
+                
+                if (songsData != null)
                 {
-                    await req(offset + 50);
+                    urls.AddRange(songsData.items.Select(playlistTrack => playlistTrack.track.external_urls.spotify));
+
+                    if (songsData.next != null)
+                    {
+                        await Request(offset + 50);
+                    }
                 }
             }
-
-            await req(0);
-
-            return await getSongsFromURLs(urls.ToArray());
         }
 
     }

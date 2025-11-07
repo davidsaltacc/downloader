@@ -14,10 +14,10 @@ using System.Web;
 
 namespace Downloader.Apis
 {
-    internal class YtDlpApi
+    internal abstract class YtDlpApi
     {
 
-        public static async Task<bool> ensureLatestYtDlpInstalled()
+        public static async Task<bool> EnsureLatestYtDlpInstalled()
         {
 
             bool installed = false;
@@ -33,11 +33,17 @@ namespace Downloader.Apis
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                string? version = await process?.StandardOutput.ReadLineAsync();
-                await process?.WaitForExitAsync();
+
+                if (process == null)
+                {
+                    return false;
+                }
+                
+                var version = await process.StandardOutput.ReadLineAsync();
+                await process.WaitForExitAsync();
                 installed = true;
 
-                var response = await MainWindow.httpClient.SendAsync(new HttpRequestMessage
+                var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
                 {
                     Method = HttpMethod.Get,
                     RequestUri = new Uri("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"),
@@ -56,25 +62,25 @@ namespace Downloader.Apis
 
         }
 
-        public static async Task downloadLatestYtDlp()
+        public static async Task DownloadLatestYtDlp()
         {
-            await FileUtils.downloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
+            await FileUtils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
         }
 
-        public static async Task<string> downloadSong(YoutubeMusicSong song, string folder)
+        public static async Task<string> DownloadSong(YoutubeMusicSong song, string folder)
         {
 
-            var type = "mp3"; // mp3 or aac
+            const string type = "mp3"; // mp3 or aac
 
-            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.youtubeSongUrl).Query).Get("v") + "." + type).Replace("\\", "/");
+            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.YoutubeSongUrl).Query).Get("v") + "." + type).Replace("\\", "/");
 
-            using var process = new Process
+            var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --no-part --newline --progress -o \"{fullFilePath}\" --progress -t {type} {song.youtubeSongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --no-part --newline --progress -o \"{fullFilePath}\" --progress -t {type} {song.YoutubeSongUrl}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -96,7 +102,7 @@ namespace Downloader.Apis
                 {
                     continue;
                 }
-                MainWindow.setStatusText("Downloaded " + ((int) Math.Round(percent)).ToString() + "%");
+                MainWindow.SetStatusText("Downloaded " + ((int) Math.Round(percent)) + "%");
             }
 
             await process.WaitForExitAsync();

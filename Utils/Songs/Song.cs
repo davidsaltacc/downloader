@@ -16,11 +16,11 @@ namespace downloader.Utils.Songs
         public readonly string Album = album;
         public readonly string[] Artists = artists;
         public readonly string Title = title;
-        public readonly int durationMs = durationMs;
-        public readonly int indexOnDisk = indexOnDisk;
-        public readonly int diskIndex = diskIndex;
-        public readonly int releaseYear = releaseYear;
-        public readonly string imageUrl = imageUrl;
+        public readonly int DurationMs = durationMs;
+        public readonly int IndexOnDisk = indexOnDisk;
+        public readonly int DiskIndex = diskIndex;
+        public readonly int ReleaseYear = releaseYear;
+        public readonly string ImageUrl = imageUrl;
 
         public static bool operator == (Song? left, Song? right)
         {
@@ -28,17 +28,17 @@ namespace downloader.Utils.Songs
                 left.Album == right.Album &&
                 left.Artists.SequenceEqual(right.Artists) &&
                 left.Title == right.Title &&
-                left.durationMs == right.durationMs &&
-                left.indexOnDisk == right.indexOnDisk &&
-                left.diskIndex == right.diskIndex &&
-                left.releaseYear == right.releaseYear &&
-                left.imageUrl == right.imageUrl
+                left.DurationMs == right.DurationMs &&
+                left.IndexOnDisk == right.IndexOnDisk &&
+                left.DiskIndex == right.DiskIndex &&
+                left.ReleaseYear == right.ReleaseYear &&
+                left.ImageUrl == right.ImageUrl
             );
         }
 
         public static bool operator !=(Song? left, Song? right) => !(left == right);
 
-        public override int GetHashCode() => (Album, String.Join(", ", Artists), Title,  durationMs, indexOnDisk, diskIndex, releaseYear, imageUrl).GetHashCode();
+        public override int GetHashCode() => (Album, String.Join(", ", Artists), Title,  DurationMs, IndexOnDisk, DiskIndex, ReleaseYear, ImageUrl).GetHashCode();
 
         public override bool Equals(object? obj)
         {

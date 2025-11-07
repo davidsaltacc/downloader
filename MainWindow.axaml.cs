@@ -18,7 +18,7 @@ namespace Downloader
     public partial class MainWindow : Window
     {
 
-        public static readonly HttpClient httpClient = new();
+        public static readonly HttpClient HttpClient = new();
 
         public MainWindow()
         {
@@ -29,7 +29,7 @@ namespace Downloader
         {
             try
             {
-                StartDownload();
+                Task.Run(() => StartDownload());
             } catch (Exception ex)
             {
                 Debug.WriteLine(ex);
@@ -40,87 +40,87 @@ namespace Downloader
         private async Task StartDownload() 
         { 
 
-            string URL = DownloadURLBox.Text ?? "";
+            var url = DownloadURLBox.Text ?? "";
 
-            bool validURL = Uri.TryCreate(URL, UriKind.Absolute, out Uri? uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+            var validUrl = Uri.TryCreate(url, UriKind.Absolute, out var uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
 
-            if (!validURL)
+            if (!validUrl)
             {
-                setStatusText("Invalid URL");
+                SetStatusText("Invalid URL");
             } else
             { 
                 if (
-                    uriResult.Host.ToLower().Contains("spotify")
+                    uriResult?.Host.Contains("spotify", StringComparison.InvariantCultureIgnoreCase) ?? false
                 )
                 {
-                    setStatusText("Starting");
+                    SetStatusText("Starting");
 
-                    await SpotifyApi.initDownloading();
+                    await SpotifyApi.InitDownloading();
                     Song[] songs;
 
-                    setStatusText("Getting songs from spotify");
+                    SetStatusText("Getting songs from spotify");
 
                     if (uriResult.AbsolutePath.StartsWith("/track"))
                     {
-                        songs = await SpotifyApi.getSongsFromURLs([ URL ]);
+                        songs = await SpotifyApi.GetSongsFromURLs([ url ]);
                     } 
                     else if (uriResult.AbsolutePath.StartsWith("/album"))
                     {
-                        songs = await SpotifyApi.getSongsInAlbum(URL);
+                        songs = await SpotifyApi.GetSongsInAlbum(url);
                     }
                     else if (uriResult.AbsolutePath.StartsWith("/playlist"))
                     {
-                        songs = await SpotifyApi.getSongsInPlaylist(URL);
+                        songs = await SpotifyApi.GetSongsInPlaylist(url);
                     } else
                     {
                         songs = [];
                     }
 
-                    setStatusText("Starting search for matches");
+                    SetStatusText("Starting search for matches");
 
                     List<YoutubeMusicSong> foundSongs = [];
 
-                    foreach (Song song in songs)
+                    foreach (var song in songs)
                     {
-                        setStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title);
-                        var found = await YoutubeMusicApi.findSong(song);
+                        SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        var found = await YoutubeMusicApi.FindSong(song);
                         if (found != null)
                         {
                             foundSongs.Add(found);
                         }
                     }
 
-                    if (!await FFmpegApi.ensureFFmpegInstalled())
+                    if (!await FFmpegApi.EnsureFFmpegInstalled())
                     {
-                        setStatusText("Downloading FFmpeg");
-                        await FFmpegApi.downloadLatestFFmpeg();
+                        SetStatusText("Downloading FFmpeg");
+                        await FFmpegApi.DownloadLatestFFmpeg();
                     }
-                    if (!await YtDlpApi.ensureLatestYtDlpInstalled())
+                    if (!await YtDlpApi.EnsureLatestYtDlpInstalled())
                     {
-                        setStatusText("Downloading yt-dlp");
-                        await YtDlpApi.downloadLatestYtDlp();
+                        SetStatusText("Downloading yt-dlp");
+                        await YtDlpApi.DownloadLatestYtDlp();
                     }
 
-                    setStatusText("Downloading songs");
+                    SetStatusText("Downloading songs");
 
                     List<string> downloadedFilenames = [];
                     Directory.CreateDirectory("./downloaded");
 
-                    foreach (YoutubeMusicSong song in foundSongs)
+                    foreach (var song in foundSongs)
                     {
-                        setStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title);
-                        downloadedFilenames.Add(await YtDlpApi.downloadSong(song, "./downloaded"));
+                        SetStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        downloadedFilenames.Add(await YtDlpApi.DownloadSong(song, "./downloaded"));
                     }
 
-                    setStatusText("Adding metadata and finishing");
+                    SetStatusText("Adding metadata and finishing");
 
                     List<string> newFilenames = [];
-                    for (int j = 0; j < downloadedFilenames.Count; j++)
+                    for (var j = 0; j < downloadedFilenames.Count; j++)
                     {
                         newFilenames.Add("./downloaded/" + String.Join(", ", foundSongs[j].Artists) + " - " + foundSongs[j].Title + "." + downloadedFilenames[j].Split(".").Last());
                         Regex.Replace(newFilenames[j], @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
                     }
-                    for (int j = newFilenames.Count - 1; j >= 0; j--)
+                    for (var j = newFilenames.Count - 1; j >= 0; j--)
                     {
                         var dupe = new List<string>(newFilenames);
                         dupe.RemoveAt(j);
@@ -130,20 +130,20 @@ namespace Downloader
                         }
                     }
 
-                    int i = 0;
-                    foreach (YoutubeMusicSong song in foundSongs)
+                    var i = 0;
+                    foreach (var song in foundSongs)
                     {
 
-                        setStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title);
-                        FileUtils.applyID3ToFile(downloadedFilenames[i], song, song.youtubeSongUrl);
+                        SetStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        FileUtils.ApplyId3ToFile(downloadedFilenames[i], song, song.YoutubeSongUrl);
 
-                        setStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title);
+                        SetStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title);
                         File.Move(downloadedFilenames[i], newFilenames[i]);
 
                         i++;
                     }
 
-                    setStatusText("Writing playlist");
+                    SetStatusText("Writing playlist");
 
                     var playlist = "#EXTM3U";
                     foreach (var name in newFilenames)
@@ -153,19 +153,19 @@ namespace Downloader
 
                     await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
 
-                    setStatusText("Done");
+                    SetStatusText("Done");
 
                     // parallel song processing, then tackle all quality of life
 
                 } else
                 {
-                    setStatusText("Must be a Spotify URL");
+                    SetStatusText("Must be a Spotify URL");
                 }
             }
             
         }
 
-        public static void setStatusText(string text)
+        public static void SetStatusText(string text)
         {
             Dispatcher.UIThread.InvokeAsync(() =>
             {

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Downloader.Apis
 {
-    internal class FFmpegApi
+    internal abstract class FFmpegApi
     {
 
-        public static async Task<bool> ensureFFmpegInstalled()
+        public static async Task<bool> EnsureFFmpegInstalled()
         {
             try
             {
@@ -20,7 +20,11 @@ namespace Downloader.Apis
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                await process?.WaitForExitAsync();
+                if (process == null)
+                {
+                    return false;
+                }
+                await process.WaitForExitAsync();
                 return true;
             }
             catch {
@@ -28,11 +32,11 @@ namespace Downloader.Apis
             }
         }
 
-        public static async Task downloadLatestFFmpeg()
+        public static async Task DownloadLatestFFmpeg()
         {
-            var file = await FileUtils.downloadFile("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z", ".");
-            var latestFileVersion = await (await MainWindow.httpClient.GetAsync("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z.ver")).Content.ReadAsStringAsync();
-            FileUtils.extractFileFrom7ZipArchive("ffmpeg-git-essentials.7z", "ffmpeg-" + latestFileVersion + "-essentials_build/bin/ffmpeg.exe", ".");
+            var file = await FileUtils.DownloadFile("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z", ".");
+            var latestFileVersion = await (await MainWindow.HttpClient.GetAsync("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z.ver")).Content.ReadAsStringAsync();
+            FileUtils.ExtractFileFrom7ZipArchive("ffmpeg-git-essentials.7z", "ffmpeg-" + latestFileVersion + "-essentials_build/bin/ffmpeg.exe", ".");
             File.Delete(file);
         }
 
