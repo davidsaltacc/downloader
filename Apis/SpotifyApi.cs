@@ -64,7 +64,7 @@ namespace Downloader.Apis
 
             if (_token == null)
             {
-                throw new Exception("Tried to make spotify API call before intializing and obtaining token");
+                throw new Exception("Tried to make spotify API call before initializing and obtaining token");
             }
 
             var qs = HttpUtility.ParseQueryString("?");
@@ -82,9 +82,9 @@ namespace Downloader.Apis
             while (response.StatusCode == HttpStatusCode.TooManyRequests && retries < 5) {
                 if (response.Headers.RetryAfter == null)
                 {
-                    Thread.Sleep(5000);
+                    await Task.Delay(5000);
                 } else {
-                    Thread.Sleep(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
+                    await Task.Delay(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
                 }
                 response = await MainWindow.HttpClient.SendAsync(CreateMessage());
                 retries++;
