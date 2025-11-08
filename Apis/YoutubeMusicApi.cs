@@ -58,16 +58,24 @@ namespace Downloader.Apis
             {
                 
                 var score = 0f;
+                var max = 0f;
 
-                score += Process.ExtractAll(originalSong.Title, [ song.Title ], s => s).ToArray()[0].Score / 100f;
-                score += Process.ExtractAll(originalSong.Album, [ song.Album ], s => s).ToArray()[0].Score / 100f * 0.65f;
-                if (song.DurationMs <= 0) {
+                score += Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
+                max += 1;
+                
+                score += Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
+                max += 0.65f;
+                
+                if (song.DurationMs > 0) {
                     score += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
+                    max += 1f;
                 }
+                
                 score += song.Artists.Select(artist => Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
                          (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
+                max += 1;
 
-                score /= (song.DurationMs <= 0 ? 2f : 3f) + 0.65f;
+                score /= max;
                 
                 scored.Add(new KeyValuePair<float, YoutubeMusicSong>( score, song ));
 

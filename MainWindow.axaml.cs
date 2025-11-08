@@ -31,15 +31,19 @@ namespace Downloader
 
         private void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            try
+            var text = DownloadURLBox.Text;
+            Task.Run(async () =>
             {
-                StartDownload();
-            } catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-                SetStatusText("Error occurred");
-                Directory.Delete("./downloaded", true);
-            }
+                try
+                {
+                    await StartDownload(text);
+                } catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                    SetStatusText("Error occurred");
+                    Directory.Delete("./downloaded", true);
+                }
+            });
         }
 
         public static readonly StyledProperty<bool> IsBusyProperty = AvaloniaProperty.Register<MainWindow, bool>(nameof(IsBusy));
@@ -49,14 +53,14 @@ namespace Downloader
             set => SetValue(IsBusyProperty, value);
         }
 
-        private async Task StartDownload() 
+        private async Task StartDownload(string? urlBoxText) 
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 IsBusy = true;
             });
 
-            var url = DownloadURLBox.Text ?? "";
+            var url = urlBoxText ?? "";
 
             var validUrl = Uri.TryCreate(url, UriKind.Absolute, out var uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
 
@@ -216,7 +220,7 @@ namespace Downloader
         {
 
             var listDupe = new List<string>(names);
-            int dupes = 0;
+            var dupes = 0;
 
             listDupe.Remove(searchFor);
 
@@ -230,7 +234,7 @@ namespace Downloader
 
         }
 
-        public static void SetStatusText(string text, int taskId = -1)
+        private static void SetStatusText(string text, int taskId = -1)
         {
             Dispatcher.UIThread.InvokeAsync(() =>
             {

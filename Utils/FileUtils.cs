@@ -54,7 +54,7 @@ namespace downloader.Utils
             taggedFile.Tag.Title = song.Title;
             taggedFile.Tag.Album = song.Album;
             taggedFile.Tag.Performers = song.Artists;
-            taggedFile.Tag.Comment = "";
+            taggedFile.Tag.Comment = comment;
             taggedFile.Tag.Track = (uint) song.IndexOnDisk;
             taggedFile.Tag.Disc = (uint) song.DiskIndex;
             taggedFile.Tag.Year = (uint) song.ReleaseYear;
