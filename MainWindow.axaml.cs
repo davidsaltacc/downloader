@@ -40,6 +40,10 @@ namespace Downloader
                 } catch (Exception ex)
                 {
                     Debug.WriteLine(ex);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        IsBusy = false;
+                    });
                     SetStatusText("Error occurred");
                     Directory.Delete("./downloaded", true);
                 }
@@ -70,24 +74,35 @@ namespace Downloader
             } else
             { 
                 if (
-                    uriResult?.Host.ToLower().Contains("spotify") ?? false
+                    (uriResult?.Host.Contains("spotify", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (uriResult?.Host.Contains("music.youtube", StringComparison.OrdinalIgnoreCase) ?? false)
                 )
                 {
                     SetStatusText("Starting");
 
-                    if (!await FFmpegApi.EnsureFFmpegInstalled())
+                    if (!await DependencyDownloader.EnsureFFmpegInstalled())
                     {
                         SetStatusText("Downloading FFmpeg");
-                        await FFmpegApi.DownloadLatestFFmpeg();
+                        await DependencyDownloader.DownloadLatestFFmpeg();
                     }
-                    if (!await YtDlpApi.EnsureLatestYtDlpInstalled())
+                    if (!await DependencyDownloader.EnsureLatestYtDlpInstalled())
                     {
                         SetStatusText("Downloading yt-dlp");
-                        await YtDlpApi.DownloadLatestYtDlp();
+                        await DependencyDownloader.DownloadLatestYtDlp();
+                    }
+                    if (!await DependencyDownloader.EnsureLatestQjsInstalled())
+                    {
+                        SetStatusText("Downloading QuickJS");
+                        await DependencyDownloader.DownloadLatestQjs();
                     }
 
-                    await SpotifyApi.InitDownloading();
+                    await SpotifyApi.Init();
+                    await YoutubeMusicApi.Init();
                     Song[] songs;
+
+                    var x = await YoutubeMusicApi.GetSong(url);
+                    await Dispatcher.UIThread.InvokeAsync(() => { IsBusy = false; });
+                    return;
 
                     SetStatusText("Getting songs from spotify");
 
@@ -118,7 +133,10 @@ namespace Downloader
                     {
                         await semaphore.WaitAsync();
                         availableSlots.TryDequeue(out var slotId);
+                        
                         Exception? exc = null;
+                        string? trace = null;
+                        
                         try
                         {
                             var result = await ProcessSong(song, slotId);
@@ -127,16 +145,22 @@ namespace Downloader
                         catch (Exception ex)
                         {
                             exc = ex;
+                            trace = ex.StackTrace;
                         }
                         finally
                         {
                             availableSlots.Enqueue(slotId);
                             semaphore.Release();
+                        
+                            if (exc != null)
+                            {
+                                Debug.WriteLine("Error at:");
+                                Debug.WriteLine(trace);
+                                Debug.WriteLine("--------");
+                                throw exc;
+                            }
                         }
-                        if (exc != null)
-                        {
-                            throw exc;
-                        }
+                        
                         return null;
                     }
 

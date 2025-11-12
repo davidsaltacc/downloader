@@ -12,7 +12,7 @@ using System.Web;
 
 namespace Downloader.Apis
 {
-    internal class SpotifyApi
+    internal abstract class SpotifyApi
     {
 
         private static string? _token = null;
@@ -23,7 +23,7 @@ namespace Downloader.Apis
             public required string access_token { get; set; }
         }
 
-        public static async Task InitDownloading()
+        public static async Task Init()
         { 
 
             var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
@@ -47,7 +47,7 @@ namespace Downloader.Apis
                 Method = HttpMethod.Post,
                 RequestUri = new Uri("https://accounts.spotify.com/api/token"),
                 Headers = {
-                    { "authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(clientId + ":" + clientSecret)) }
+                    { "authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(clientId + ":" + clientSecret)) }
                 },
                 Content = new StringContent("grant_type=client_credentials", Encoding.UTF8, "application/x-www-form-urlencoded")
             });
