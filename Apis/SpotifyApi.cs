@@ -1,4 +1,4 @@
-﻿using downloader.Utils.Songs;
+﻿using Downloader.Utils.Songs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,24 +6,35 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
 namespace Downloader.Apis
 {
-    internal abstract class SpotifyApi
+    internal class SpotifyApi : ISongDataSource<SpotifySong>
     {
+        
+        private SpotifyApi() {}
 
-        private static string? _token = null;
+        private static SpotifyApi? _instance = null;
+        public static SpotifyApi Instance
+        {
+            get
+            {
+                _instance ??= new SpotifyApi();
+                return _instance;
+            }
+        }
 
-        public class TokenResponse
+        private string? _token = null;
+
+        private class TokenResponse
         {
             public required string token_type { get; set; }
             public required string access_token { get; set; }
         }
 
-        public static async Task Init()
+        public async Task Init()
         { 
 
             var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
@@ -58,7 +69,7 @@ namespace Downloader.Apis
 
         }
 
-        private static async Task<HttpResponseMessage> SendApiRequest(string endpoint, HttpMethod method,
+        private async Task<HttpResponseMessage> SendApiRequest(string endpoint, HttpMethod method,
             Dictionary<string, string> parameters, HttpContent? content = null)
         {
 
@@ -107,13 +118,13 @@ namespace Downloader.Apis
 
         }
 
-        private static string? ExtractIdFromUrl(string url)
+        private string? ExtractIdFromUrl(string url)
         {
             Uri.TryCreate(url, UriKind.Absolute, out var uriResult);
             return uriResult?.AbsolutePath.Split("/")[2];
         }
 
-        public class GetSongsResponse { 
+        private class GetSongsResponse { 
             public class Track
             {
                 public class Album
@@ -145,7 +156,7 @@ namespace Downloader.Apis
             public required Track[] tracks { get; set; }
         }
 
-        public static async Task<SpotifySong[]> GetSongsFromURLs(string[] urls)
+        public async Task<SpotifySong[]> GetSongsFromURLs(string[] urls)
         {
 
             var ids = new string?[urls.Length];
@@ -205,7 +216,7 @@ namespace Downloader.Apis
             return songs;
         }
 
-        public class GetSongsInAlbumResponse {
+        private class GetSongsInAlbumResponse {
             public class Track
             {
                 public class ExternalUrls
@@ -220,7 +231,7 @@ namespace Downloader.Apis
             public required Track[] items { get; set; }
         }
 
-        public static async Task<SpotifySong[]> GetSongsInAlbum(string albumUrl)
+        public async Task<SpotifySong[]> GetSongsInAlbum(string albumUrl)
         {
             List<string> urls = [];
 
@@ -242,7 +253,7 @@ namespace Downloader.Apis
             }
         }
 
-        public class GetSongsInPlaylistResponse
+        private class GetSongsInPlaylistResponse
         {
             public class PlaylistTrack
             {
@@ -263,7 +274,7 @@ namespace Downloader.Apis
             public required PlaylistTrack[] items { get; set; }
         }
 
-        public static async Task<SpotifySong[]> GetSongsInPlaylist(string playlistUrl)
+        public async Task<SpotifySong[]> GetSongsInPlaylist(string playlistUrl)
         {
             List<string> urls = [];
 
@@ -287,5 +298,22 @@ namespace Downloader.Apis
             }
         }
 
+        public async Task<SpotifySong[]> GetSongs(string url)
+        {
+            var uri = new Uri(url);
+            if (uri.AbsolutePath.StartsWith("/track"))
+            {
+                return await GetSongsFromURLs([ url ]);
+            } 
+            if (uri.AbsolutePath.StartsWith("/album"))
+            {
+                return await GetSongsInAlbum(url);
+            }
+            if (uri.AbsolutePath.StartsWith("/playlist"))
+            {
+                return await GetSongsInPlaylist(url);
+            }
+            return [];
+        }
     }
 }

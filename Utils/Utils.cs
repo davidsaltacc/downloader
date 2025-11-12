@@ -1,19 +1,19 @@
-﻿
-using downloader.Utils.Songs;
-using SharpCompress.Archives;
+﻿using SharpCompress.Archives;
 using SharpCompress.Archives.SevenZip;
 using SharpCompress.Common;
 using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Downloader.Utils.Songs;
 using SharpCompress.Archives.Zip;
 using TagLib.Id3v2;
 
-namespace downloader.Utils
+namespace Downloader.Utils
 {
-    internal abstract class FileUtils
+    internal abstract class Utils
     {
 
         public static async Task<string> DownloadFile(string url, string folder)
@@ -127,6 +127,19 @@ namespace downloader.Utils
 
             taggedFile.Save();
 
+        }
+        
+        public static JsonNode? NavigateJsonNode(JsonNode? node, params object[] path)
+        {
+            foreach (var key in path) {
+                node = key switch
+                {
+                    string s => node?[s],
+                    int i => node?.AsArray().ElementAtOrDefault(i),
+                    _ => null
+                };
+            }
+            return node;
         }
 
     }

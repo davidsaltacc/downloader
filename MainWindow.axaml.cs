@@ -2,9 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using downloader.Utils;
-using downloader.Utils.Songs;
-using Downloader.Apis;
+using Downloader.Utils.Songs;
+using Downloader.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -15,6 +14,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Downloader.Apis;
 
 namespace Downloader
 {
@@ -96,31 +96,14 @@ namespace Downloader
                         await DependencyDownloader.DownloadLatestQjs();
                     }
 
-                    await SpotifyApi.Init();
-                    await YoutubeMusicApi.Init();
+                    await SpotifyApi.Instance.Init();
+                    await YoutubeMusicApi.Instance.Init();
                     Song[] songs;
 
-                    var x = await YoutubeMusicApi.GetSong(url);
-                    await Dispatcher.UIThread.InvokeAsync(() => { IsBusy = false; });
-                    return;
-
-                    SetStatusText("Getting songs from spotify");
-
-                    if (uriResult.AbsolutePath.StartsWith("/track"))
-                    {
-                        songs = await SpotifyApi.GetSongsFromURLs([ url ]); // TODO dont make playlist for single track
-                    } 
-                    else if (uriResult.AbsolutePath.StartsWith("/album"))
-                    {
-                        songs = await SpotifyApi.GetSongsInAlbum(url);
-                    }
-                    else if (uriResult.AbsolutePath.StartsWith("/playlist"))
-                    {
-                        songs = await SpotifyApi.GetSongsInPlaylist(url);
-                    } else
-                    {
-                        songs = [];
-                    }
+                    SetStatusText("Getting songs");
+                    
+                    // TODO implement all methods from the interfaces in the api classes
+                    // TODO use the functions in this downloading process here
 
                     SetStatusText("Downloading");
 
@@ -229,7 +212,7 @@ namespace Downloader
             _usedFilenames.Add(newFilename);
 
             SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            FileUtils.ApplyId3ToFile(downloaded, found, found.YoutubeSongUrl);
+            Utils.Utils.ApplyId3ToFile(downloaded, found, found.YoutubeSongUrl);
 
             SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename);

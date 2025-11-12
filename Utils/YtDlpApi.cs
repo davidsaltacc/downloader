@@ -1,18 +1,13 @@
-﻿
-using Avalonia.Controls.ApplicationLifetimes;
-using downloader.Utils;
-using downloader.Utils.Songs;
+﻿using Downloader.Utils.Songs;
 using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Net.Http;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 
-namespace Downloader.Apis
+namespace Downloader.Utils
 {
     internal abstract class YtDlpApi
     {

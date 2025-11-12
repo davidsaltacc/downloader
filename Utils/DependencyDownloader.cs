@@ -1,6 +1,5 @@
 ﻿
 using System;
-using downloader.Utils;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,7 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
-namespace Downloader.Apis
+namespace Downloader.Utils
 {
     internal abstract class DependencyDownloader
     {
@@ -38,9 +37,9 @@ namespace Downloader.Apis
 
         public static async Task DownloadLatestFFmpeg()
         {
-            var file = await FileUtils.DownloadFile("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z", ".");
+            var file = await Utils.DownloadFile("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z", ".");
             var latestFileVersion = await (await MainWindow.HttpClient.GetAsync("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z.ver")).Content.ReadAsStringAsync();
-            FileUtils.ExtractFileFrom7ZipArchive("ffmpeg-git-essentials.7z", "ffmpeg-" + latestFileVersion + "-essentials_build/bin/ffmpeg.exe", ".");
+            Utils.ExtractFileFrom7ZipArchive("ffmpeg-git-essentials.7z", "ffmpeg-" + latestFileVersion + "-essentials_build/bin/ffmpeg.exe", ".");
             File.Delete(file);
         }
         
@@ -76,8 +75,8 @@ namespace Downloader.Apis
         public static async Task DownloadLatestQjs()
         {
             var latest = JsonNode.Parse(await (await MainWindow.HttpClient.GetAsync("https://bellard.org/quickjs/binary_releases/LATEST.json")).Content.ReadAsStringAsync())?["version"]?.ToString();
-            var file = await FileUtils.DownloadFile("https://bellard.org/quickjs/binary_releases/quickjs-win-x86_64-" + latest + ".zip", ".");
-            FileUtils.ExtractAllFilesFromZipArchive("quickjs-win-x86_64-" + latest + ".zip", ".");
+            var file = await Utils.DownloadFile("https://bellard.org/quickjs/binary_releases/quickjs-win-x86_64-" + latest + ".zip", ".");
+            Utils.ExtractAllFilesFromZipArchive("quickjs-win-x86_64-" + latest + ".zip", ".");
             File.Delete(file);
         }
         
@@ -128,7 +127,7 @@ namespace Downloader.Apis
 
         public static async Task DownloadLatestYtDlp()
         {
-            await FileUtils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
+            await Utils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
         }
 
     }

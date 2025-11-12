@@ -1,4 +1,4 @@
-﻿using downloader.Utils.Songs;
+﻿using Downloader.Utils.Songs;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,14 +11,26 @@ using System.Web;
 
 namespace Downloader.Apis
 {
-    internal abstract class YoutubeMusicApi
+    internal class YoutubeMusicApi : ISongDataSource<YoutubeMusicSong>, ISongAudioSource
     {
+        
+        private YoutubeMusicApi() {}
 
-        private static string? _visitorId;
-        private static string? _clientName;
-        private static string? _clientVersion;
+        private static YoutubeMusicApi? _instance = null;
+        public static YoutubeMusicApi Instance
+        {
+            get
+            {
+                _instance ??= new YoutubeMusicApi();
+                return _instance;
+            }
+        }
 
-        public static async Task Init()
+        private string? _visitorId;
+        private string? _clientName;
+        private string? _clientVersion;
+
+        public async Task Init()
         {
             
             var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
@@ -41,7 +53,7 @@ namespace Downloader.Apis
 
         }
         
-        private static async Task<HttpResponseMessage?> GetAlbumDataFromBrowseId(string browseId)
+        private async Task<HttpResponseMessage?> GetAlbumDataFromBrowseId(string browseId)
         {
             return await SendApiRequest("browse",
 @"{
@@ -49,7 +61,7 @@ namespace Downloader.Apis
 }");;
         }
         
-        private static async Task<HttpResponseMessage?> GetAlbumDataFromSong(string videoId)
+        private async Task<HttpResponseMessage?> GetAlbumDataFromSong(string videoId)
         {
             
             var response = await SendApiRequest("next", 
@@ -63,18 +75,21 @@ namespace Downloader.Apis
             }
 
             var content = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-            var items = content?["contents"]?["singleColumnMusicWatchNextResultsRenderer"]?
-                ["tabbedRenderer"]?["watchNextTabbedResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["musicQueueRenderer"]?["content"]?
-                ["playlistPanelRenderer"]?["contents"]?[0]?["playlistPanelVideoRenderer"]?["menu"]?["menuRenderer"]?["items"]?.AsArray();
+            var items = Utils.Utils.NavigateJsonNode(
+                content,
+                "contents", "singleColumnMusicWatchNextResultsRenderer", "tabbedRenderer", 
+                "watchNextTabbedResultsRenderer", "tabs", 0, "tabRenderer", "content", "musicQueueRenderer", "content",
+                "playlistPanelRenderer", "contents", 0, "playlistPanelVideoRenderer", "menu", "menuRenderer", "items"
+            )?.AsArray();
 
-            string browseId = null;
+            string? browseId = null;
             
             foreach (var item in (items ?? [])) 
             {
                 var navItemRenderer = item?["menuNavigationItemRenderer"];
                 if (navItemRenderer?["icon"]?["iconType"]?.ToString().Contains("album", StringComparison.OrdinalIgnoreCase) ?? false) 
                 {
-                    browseId = navItemRenderer?["navigationEndpoint"]?["browseEndpoint"]?["browseId"].ToString() ?? browseId;
+                    browseId = navItemRenderer["navigationEndpoint"]?["browseEndpoint"]?["browseId"]?.ToString() ?? browseId;
                 }
             }
 
@@ -87,7 +102,7 @@ namespace Downloader.Apis
             
         }
 
-        public static async Task<YoutubeMusicSong?> GetSong(string url, bool skipQueryingAlbum = false, int indexOnDisc = -1)
+        public async Task<YoutubeMusicSong?> GetSong(string url, bool skipQueryingAlbum = false, int indexOnDisc = -1)
         {
 
             if (skipQueryingAlbum && indexOnDisc == -1)
@@ -126,13 +141,24 @@ namespace Downloader.Apis
 
             var albumData = await GetAlbumDataFromSong(videoId);
             var albumContent = JsonNode.Parse(await (albumData?.Content.ReadAsStringAsync() ?? Task.Run(() => "{}")));
-            var songsData =
-                albumContent?["contents"]?["twoColumnBrowseResultsRenderer"]?["secondaryContents"]?[
-                    "sectionListRenderer"]?["contents"]?[0]?["musicShelfRenderer"]?["contents"]?.AsArray();
+            var songsData = Utils.Utils.NavigateJsonNode(
+                albumContent,
+                "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", "sectionListRenderer",
+                "contents", 0, "musicShelfRenderer", "contents"
+            )?.AsArray();
 
-            var albumName = albumContent?["contents"]?["twoColumnBrowseResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["sectionListRenderer"]?["contents"]?[0]?["musicResponsiveHeaderRenderer"]?["title"]?["runs"]?[0]?["text"]?.ToString();
+            var albumName = Utils.Utils.NavigateJsonNode(
+                albumContent,
+                "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
+            )?.ToString();
             int? releaseYear = null;
-            if (int.TryParse(albumContent?["contents"]?["twoColumnBrowseResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["sectionListRenderer"]?["contents"]?[0]?["musicResponsiveHeaderRenderer"]?["subtitle"]?["runs"]?[2]?["text"]?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
+            if (int.TryParse(Utils.Utils.NavigateJsonNode(
+                    albumContent,
+                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                    "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
+                    "subtitle", "runs", 2, "text"
+            )?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
             {
                 releaseYear = yearParsed;
             }
@@ -143,9 +169,11 @@ namespace Downloader.Apis
                 foreach (var songData in songsData ?? [])
                 {
                     if (videoId ==
-                        songData?["musicResponsiveListItemRenderer"]?["overlay"]?["musicItemThumbnailOverlayRenderer"]?
-                            ["content"]?["musicPlayButtonRenderer"]?["playNavigationEndpoint"]?["watchEndpoint"]?[
-                                "videoId"]?.ToString())
+                        Utils.Utils.NavigateJsonNode(
+                            songData,
+                            "musicResponsiveListItemRenderer", "overlay", "musicItemThumbnailOverlayRenderer",
+                            "content", "musicPlayButtonRenderer", "playNavigationEndpoint", "watchEndpoint", "videoId"
+                        )?.ToString())
                     {
                         indexOnDisc = i;
                         break;
@@ -161,7 +189,7 @@ namespace Downloader.Apis
 
         }
 
-        private static async Task<HttpResponseMessage?> SendApiRequest(string endpoint, string data)
+        private async Task<HttpResponseMessage?> SendApiRequest(string endpoint, string data)
         {
             
             var finalData = JsonNode.Parse(data);
@@ -194,7 +222,7 @@ namespace Downloader.Apis
             
         }
 
-        public static async Task<YoutubeMusicSong?> FindSong(Song songData)
+        public async Task<YoutubeMusicSong?> FindSong(Song songData)
         {
 
             var artistsNameJoined = string.Join(" ", songData.Artists);
@@ -230,7 +258,7 @@ namespace Downloader.Apis
 
         }
 
-        private static List<KeyValuePair<float, YoutubeMusicSong>> ScoreFoundSongs(List<YoutubeMusicSong> songs, Song originalSong)
+        private List<KeyValuePair<float, YoutubeMusicSong>> ScoreFoundSongs(List<YoutubeMusicSong> songs, Song originalSong)
         {
             List<KeyValuePair<float, YoutubeMusicSong>> scored = [];
 
@@ -270,7 +298,7 @@ namespace Downloader.Apis
             Artists = 18791 // Ig
         }
 
-        private static async Task<List<YoutubeMusicSong>> Search(string query, SearchFor searchFor) 
+        private async Task<List<YoutubeMusicSong>> Search(string query, SearchFor searchFor) 
         {
 
             var searchParams = "EgWKAQ"; // enable filter
@@ -295,7 +323,10 @@ namespace Downloader.Apis
 
             var data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
 
-            var contents = data?["contents"]?["tabbedSearchResultsRenderer"]?["tabs"]?[0]?["tabRenderer"]?["content"]?["sectionListRenderer"]?["contents"];
+            var contents = Utils.Utils.NavigateJsonNode(
+                data,
+                "contents", "tabbedSearchResultsRenderer", "tabs", 0, "tabRenderer", "content", "sectionListRenderer", "contents"
+            );
             var musicShelfIndex = 0;
             var i = 0;
             foreach (var item in contents?.AsArray() ?? [])
@@ -348,5 +379,9 @@ namespace Downloader.Apis
 
         }
 
+        public Task<YoutubeMusicSong[]> GetSongs(string url)
+        {
+            // TODO
+        }
     }
 }
