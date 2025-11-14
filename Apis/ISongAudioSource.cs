@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Downloader.Utils.Songs;
 
 namespace Downloader.Apis;
@@ -6,7 +7,8 @@ namespace Downloader.Apis;
 public interface ISongAudioSource<T> where T : Song
 {
     
-    Task<T> FindSong(Song originalSong);
-    Task<string> DownloadSong(T song);
+    string GetSongSourceUrl(T song);
+    Task<T?> FindSong(Song originalSong);
+    Task<string?> DownloadSong(T song, string folder, Action<int> onProgressUpdate);
     
 }

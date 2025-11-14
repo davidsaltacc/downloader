@@ -96,18 +96,23 @@ namespace Downloader
                         await DependencyDownloader.DownloadLatestQjs();
                     }
 
+                    Directory.CreateDirectory("./downloaded");
                     await SpotifyApi.Instance.Init();
                     await YoutubeMusicApi.Instance.Init();
                     Song[] songs;
 
                     SetStatusText("Getting songs");
                     
-                    // TODO implement all methods from the interfaces in the api classes
                     // TODO use the functions in this downloading process here
                     // TODO improve UI (less hardcoded stuff, make it all configurable - nicer frontend)
                     // TODO add support for more services?
                     // TODO make installer & related
                     // TODO release
+
+                    var dataSource = YoutubeMusicApi.Instance;
+                    var audioSource = YoutubeMusicApi.Instance;
+                    
+                    songs = await dataSource.GetSongs(url);
 
                     SetStatusText("Downloading");
 
@@ -126,7 +131,11 @@ namespace Downloader
                         
                         try
                         {
-                            var result = await ProcessSong(song, slotId);
+                            var result = await ProcessSong(audioSource, song, slotId);
+                            // TODO TOP PRIORITY RN
+                            // 1. TODO why does it not accept it? YoutubeMusicSong extends Song, should work in theory
+                            // 2. TODO test if can download yt music albums
+                            // 3. TODO implement yt music playlists
                             return result;
                         }
                         catch (Exception ex)
@@ -189,22 +198,25 @@ namespace Downloader
 
         private static List<string> _usedFilenames = [];
 
-        private static async Task<string?> ProcessSong(Song song, int slotId)
+        private static async Task<string?> ProcessSong(ISongAudioSource<Song> source, Song song, int slotId)
         {
 
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
-            var found = await YoutubeMusicApi.FindSong(song);
+            var found = await source.FindSong(song);
             if (found == null)
             {
                 return null;
             }
 
-            Directory.CreateDirectory("./downloaded");
             SetStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            var downloaded = await YtDlpApi.DownloadSong(found, "./downloaded", percentage => 
+            var downloaded = await source.DownloadSong(found, "./downloaded", percentage => 
             {
                 SetStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage + "%", slotId);
             });
+            if (downloaded == null)
+            {
+                return null;
+            }
 
             var newFilename = String.Join(", ", found.Artists) + " - " + found.Title + "." + downloaded.Split(".").Last();
             newFilename = "./downloaded/" + Regex.Replace(newFilename, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
@@ -216,7 +228,7 @@ namespace Downloader
             _usedFilenames.Add(newFilename);
 
             SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            Utils.Utils.ApplyId3ToFile(downloaded, found, found.YoutubeSongUrl);
+            Utils.Utils.ApplyId3ToFile(downloaded, found, source.GetSongSourceUrl(found));
 
             SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename);

@@ -8,10 +8,11 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
+using Downloader.Utils;
 
 namespace Downloader.Apis
 {
-    internal class YoutubeMusicApi : ISongDataSource<YoutubeMusicSong>, ISongAudioSource
+    internal class YoutubeMusicApi : ISongDataSource<YoutubeMusicSong>, ISongAudioSource<YoutubeMusicSong>
     {
         
         private YoutubeMusicApi() {}
@@ -102,13 +103,17 @@ namespace Downloader.Apis
             
         }
 
-        public async Task<YoutubeMusicSong?> GetSong(string url, bool skipQueryingAlbum = false, int indexOnDisc = -1)
+        private JsonArray? GetSongsFromAlbumData(JsonNode? albumData)
         {
+            return Utils.Utils.NavigateJsonNode(
+                albumData,
+                "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", "sectionListRenderer",
+                "contents", 0, "musicShelfRenderer", "contents"
+            )?.AsArray();
+        }
 
-            if (skipQueryingAlbum && indexOnDisc == -1)
-            {
-                throw new Exception("Can't skip album while getting song and not provide song index on disc.");
-            }
+        private async Task<YoutubeMusicSong?> GetSong(string url, bool skipQueryingAlbum = false)
+        {
 
             var videoId = HttpUtility.ParseQueryString(new Uri(url).Query)["v"];
             if (videoId == null)
@@ -138,22 +143,18 @@ namespace Downloader.Apis
                 Regex.Replace(
                     content?["videoDetails"]?["thumbnail"]?["thumbnails"]?.AsArray()[0]?["url"]?.ToString() ?? "",
                     @"=w\d+-h\d+-", "=w2048-h2048-"); // force the size to the maximum by supplying a huge resolution
+            
+            var albumData = skipQueryingAlbum ? null : await GetAlbumDataFromSong(videoId);
+            var albumContent = skipQueryingAlbum ? null : JsonNode.Parse(await (albumData?.Content.ReadAsStringAsync() ?? Task.Run(() => "{}")));
+            var songsData = skipQueryingAlbum ? null : GetSongsFromAlbumData(albumContent);
 
-            var albumData = await GetAlbumDataFromSong(videoId);
-            var albumContent = JsonNode.Parse(await (albumData?.Content.ReadAsStringAsync() ?? Task.Run(() => "{}")));
-            var songsData = Utils.Utils.NavigateJsonNode(
-                albumContent,
-                "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", "sectionListRenderer",
-                "contents", 0, "musicShelfRenderer", "contents"
-            )?.AsArray();
-
-            var albumName = Utils.Utils.NavigateJsonNode(
+            var albumName = skipQueryingAlbum ? "" : Utils.Utils.NavigateJsonNode(
                 albumContent,
                 "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                 "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
             )?.ToString();
             int? releaseYear = null;
-            if (int.TryParse(Utils.Utils.NavigateJsonNode(
+            if (!skipQueryingAlbum && int.TryParse(Utils.Utils.NavigateJsonNode(
                     albumContent,
                     "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                     "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
@@ -163,9 +164,10 @@ namespace Downloader.Apis
                 releaseYear = yearParsed;
             }
 
-            if (indexOnDisc == -1)
+            int? indexOnDisc = null;
+            if (!skipQueryingAlbum)
             {
-                int i = 0;
+                var i = 0;
                 foreach (var songData in songsData ?? [])
                 {
                     if (videoId ==
@@ -177,15 +179,12 @@ namespace Downloader.Apis
                     {
                         indexOnDisc = i;
                         break;
-                    }
-                    else
-                    {
-                        i++;
-                    }
+                    } 
+                    i++;
                 }
             }
             
-            return new YoutubeMusicSong(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc, 0, releaseYear ?? -1, thumbnail, url);
+            return new YoutubeMusicSong(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc ?? -1, 0, releaseYear ?? -1, thumbnail, url);
 
         }
 
@@ -257,7 +256,7 @@ namespace Downloader.Apis
                     songData.DiskIndex, songData.ReleaseYear, songData.ImageUrl, finalSong.YoutubeSongUrl);
 
         }
-
+        
         private List<KeyValuePair<float, YoutubeMusicSong>> ScoreFoundSongs(List<YoutubeMusicSong> songs, Song originalSong)
         {
             List<KeyValuePair<float, YoutubeMusicSong>> scored = [];
@@ -379,9 +378,95 @@ namespace Downloader.Apis
 
         }
 
-        public Task<YoutubeMusicSong[]> GetSongs(string url)
+        private async Task<string?> GetAlbumBrowseId(string url)
         {
-            // TODO
+            var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri(url),
+                Headers = {
+                    { "user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3" },
+                    { "Cookie", "SOCS=CAI" }
+                }
+            });
+            var content = (await response.Content.ReadAsStringAsync()).Replace("\\\"", "\"");
+            var match = Regex.Match(content, @"""(MPRE.+?)""");
+            return new List<Group>(match.Groups).ElementAtOrDefault(1)?.Value;
         }
+
+        private async Task<YoutubeMusicSong[]> GetSongsInAlbum(string browseId)
+        {
+            var albumData = await GetAlbumDataFromBrowseId(browseId);
+            if (albumData == null)
+            {
+                return [];
+            }
+            var albumContent = JsonNode.Parse(await (albumData?.Content.ReadAsStringAsync() ?? Task.Run(() => "{}")));
+            var songsData = GetSongsFromAlbumData(albumContent);
+
+            return songsData?.Select(async (song, index) =>
+            {
+                var songData = await GetSong("https://music.youtube.com/watch?v=" + Utils.Utils.NavigateJsonNode(
+                    song,
+                    "musicResponsiveListItemRenderer", "overlay", "musicItemThumbnailOverlayRenderer",
+                    "content", "musicPlayButtonRenderer", "playNavigationEndpoint", "watchEndpoint", "videoId"
+                ) ?? "", true);
+                if (songData == null)
+                {
+                    return new YoutubeMusicSong("", [""], "", 0, 0, 0, 0, "", "");
+                }
+                songData.Album = Utils.Utils.NavigateJsonNode(
+                    albumContent,
+                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                    "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
+                )?.ToString() ?? "";
+                if (int.TryParse(Utils.Utils.NavigateJsonNode(
+                        albumContent,
+                        "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                        "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
+                        "subtitle", "runs", 2, "text")?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
+                {
+                    songData.ReleaseYear = yearParsed;
+                }
+                songData.IndexOnDisk = index;
+                songData.DiskIndex = 0;
+                return songData;
+            }).Select(t => t.Result).Where(s => s.YoutubeSongUrl.Length > 0 && s.Title.Length > 0 && s.DurationMs > 0).ToArray() ?? [];
+
+        }
+
+        public async Task<YoutubeMusicSong[]> GetSongs(string url)
+        {
+            var uri = new Uri(url);
+            
+            if (uri.AbsolutePath.StartsWith("/watch"))
+            {
+                var song = await GetSong(url);
+                return song == null ? [] : [ song ];
+            }
+
+            var browseId = await GetAlbumBrowseId(url);
+            if (browseId != null)
+            {
+                return await GetSongsInAlbum(browseId);
+            }
+            else
+            {
+                // TODO playlist - https://github.com/sigma67/ytmusicapi/blob/main/ytmusicapi/mixins/playlists.py#L14
+            }
+
+            return [];
+        }
+
+        public string GetSongSourceUrl(YoutubeMusicSong song)
+        {
+            return song.YoutubeSongUrl;
+        }
+
+        public async Task<string?> DownloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
+        {
+            return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate);
+        }
+        
     }
 }

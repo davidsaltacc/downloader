@@ -13,14 +13,14 @@ namespace Downloader.Utils.Songs
         int releaseYear,
         string imageUrl)
     {
-        public readonly string Album = album;
-        public readonly string[] Artists = artists;
-        public readonly string Title = title;
-        public readonly int DurationMs = durationMs;
-        public readonly int IndexOnDisk = indexOnDisk;
-        public readonly int DiskIndex = diskIndex;
-        public readonly int ReleaseYear = releaseYear;
-        public readonly string ImageUrl = imageUrl;
+        public string Album = album;
+        public string[] Artists = artists;
+        public string Title = title;
+        public int DurationMs = durationMs;
+        public int IndexOnDisk = indexOnDisk;
+        public int DiskIndex = diskIndex;
+        public int ReleaseYear = releaseYear;
+        public string ImageUrl = imageUrl;
 
         public static bool operator == (Song? left, Song? right)
         {
