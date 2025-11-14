@@ -104,6 +104,10 @@ namespace Downloader
                     
                     // TODO implement all methods from the interfaces in the api classes
                     // TODO use the functions in this downloading process here
+                    // TODO improve UI (less hardcoded stuff, make it all configurable - nicer frontend)
+                    // TODO add support for more services?
+                    // TODO make installer & related
+                    // TODO release
 
                     SetStatusText("Downloading");
 
