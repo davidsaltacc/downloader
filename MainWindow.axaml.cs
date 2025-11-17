@@ -109,7 +109,7 @@ namespace Downloader
                     // TODO make installer & related
                     // TODO release
 
-                    var dataSource = YoutubeMusicApi.Instance;
+                    var dataSource = YoutubeMusicApi.Instance; // TODO decide automatically
                     var audioSource = YoutubeMusicApi.Instance;
                     
                     songs = await dataSource.GetSongs(url);
@@ -132,10 +132,6 @@ namespace Downloader
                         try
                         {
                             var result = await ProcessSong(audioSource, song, slotId);
-                            // TODO TOP PRIORITY RN
-                            // 1. TODO why does it not accept it? YoutubeMusicSong extends Song, should work in theory
-                            // 2. TODO test if can download yt music albums
-                            // 3. TODO implement yt music playlists
                             return result;
                         }
                         catch (Exception ex)
@@ -198,7 +194,7 @@ namespace Downloader
 
         private static List<string> _usedFilenames = [];
 
-        private static async Task<string?> ProcessSong(ISongAudioSource<Song> source, Song song, int slotId)
+        private static async Task<string?> ProcessSong<T>(ISongAudioSource<T> source, Song song, int slotId) where T : Song
         {
 
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
@@ -231,7 +227,7 @@ namespace Downloader
             Utils.Utils.ApplyId3ToFile(downloaded, found, source.GetSongSourceUrl(found));
 
             SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            File.Move(downloaded, newFilename);
+            File.Move(downloaded, newFilename, true);
 
             SetStatusText("", slotId);
             

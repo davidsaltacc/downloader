@@ -224,6 +224,12 @@ namespace Downloader.Apis
         public async Task<YoutubeMusicSong?> FindSong(Song songData)
         {
 
+            if (songData is YoutubeMusicSong song)
+            {
+                // return song;
+                // ya'd think. but for some reason, some videos are age-restricted, though their songs are not
+            }
+
             var artistsNameJoined = string.Join(" ", songData.Artists);
 
             var songTitleClean = Regex.Replace(songData.Title, @"[\p{S}]+", " ").Trim();
@@ -410,11 +416,18 @@ namespace Downloader.Apis
                     song,
                     "musicResponsiveListItemRenderer", "overlay", "musicItemThumbnailOverlayRenderer",
                     "content", "musicPlayButtonRenderer", "playNavigationEndpoint", "watchEndpoint", "videoId"
-                ) ?? "", true);
+                ), true);
+                
                 if (songData == null)
                 {
                     return new YoutubeMusicSong("", [""], "", 0, 0, 0, 0, "", "");
                 }
+                
+                songData.Title = Utils.Utils.NavigateJsonNode(
+                    song,
+                    "musicResponsiveListItemRenderer", "flexColumns",
+                    0, "musicResponsiveListItemFlexColumnRenderer", "text", "runs", 0, "text"
+                )?.ToString() ?? songData.Title;
                 songData.Album = Utils.Utils.NavigateJsonNode(
                     albumContent,
                     "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
