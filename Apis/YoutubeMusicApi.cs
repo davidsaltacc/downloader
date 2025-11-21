@@ -56,10 +56,11 @@ namespace Downloader.Apis
         
         private async Task<HttpResponseMessage?> GetAlbumDataFromBrowseId(string browseId)
         {
-            return await SendApiRequest("browse",
+            var response = await SendApiRequest("browse",
 @"{
     ""browseId"": """ + browseId + @"""
-}");;
+}");
+            return response;
         }
         
         private async Task<HttpResponseMessage?> GetAlbumDataFromSong(string videoId)
@@ -228,6 +229,7 @@ namespace Downloader.Apis
             {
                 // return song;
                 // ya'd think. but for some reason, some videos are age-restricted, though their songs are not
+                // also some songs only exists as videos but not songs
             }
 
             var artistsNameJoined = string.Join(" ", songData.Artists);
@@ -253,7 +255,9 @@ namespace Downloader.Apis
 
             var results = ScoreFoundSongs((await Task.WhenAll([
                 Search(artistsNamesClean + " " + songTitleClean, SearchFor.Songs),
+                Search(artistsNamesClean + " " + songTitleClean, SearchFor.Videos),
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
+                Search(artistsNameJoined + " " + songData.Title + " ", SearchFor.Videos),
                 Search(artistsNameJoined + " " + songData.Title + " " + songData.Album, SearchFor.Songs)
             ])).SelectMany(x => x).Distinct().ToList(), songData);
 
@@ -300,7 +304,8 @@ namespace Downloader.Apis
         private enum SearchFor {
             Songs = 18761, // II
             Albums = 18777, // IY
-            Artists = 18791 // Ig
+            Artists = 18791, // Ig
+            Videos = 18769 // IQ
         }
 
         private async Task<List<YoutubeMusicSong>> Search(string query, SearchFor searchFor) 
@@ -448,6 +453,68 @@ namespace Downloader.Apis
 
         }
 
+        private async Task<YoutubeMusicSong[]> GetSongsInPlaylist(string playlistId)
+        {
+            var browseId = playlistId.StartsWith("VL") ? playlistId : ("VL" + playlistId);
+            var response = await SendApiRequest("browse", @"{ ""browseId"": """ + browseId + @""" }");
+            if (response == null)
+            {
+                return [];
+            }
+
+            var data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            List<YoutubeMusicSong> songs = [];
+
+            await AddSongs(data, false);
+
+            while (true)
+            {
+                var continuation = Utils.Utils.NavigateJsonNode(
+                    data, "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", 
+                    "sectionListRenderer", "contents", 0, "musicPlaylistShelfRenderer", "contents", -1,
+                    "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"
+                )?.ToString();
+                
+                if (continuation == null)
+                {
+                    break;
+                }
+                
+                response = await SendApiRequest("browse", @"{ ""continuation"": """ + continuation + @""" }");
+                if (response == null)
+                {
+                    break;
+                }
+                data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+                
+                await AddSongs(data, true);
+
+            }
+            
+            return songs.ToArray();
+            
+            async Task AddSongs(JsonNode? data, bool continuation)
+            {
+                foreach (var jsonNode in ((continuation ? Utils.Utils.NavigateJsonNode(
+                             data, "onResponseReceivedActions", 0, "appendContinuationItemsAction", "continuationItems"
+                         ) : Utils.Utils.NavigateJsonNode(
+                             data, "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", 
+                             "sectionListRenderer", "contents", 0, "musicPlaylistShelfRenderer", "contents"
+                         ))?.AsArray() ?? []))
+                {
+                    var song = await GetSong("https://music.youtube.com/watch?v=" + Utils.Utils.NavigateJsonNode(
+                        jsonNode, "musicResponsiveListItemRenderer", "flexColumns", 0,
+                        "musicResponsiveListItemFlexColumnRenderer", "text", "runs", 0, "navigationEndpoint",
+                        "watchEndpoint", "videoId"
+                    ));
+                    if (song != null)
+                    {
+                        songs.Add(song);
+                    }
+                }
+            }
+        }
+
         public async Task<YoutubeMusicSong[]> GetSongs(string url)
         {
             var uri = new Uri(url);
@@ -463,12 +530,14 @@ namespace Downloader.Apis
             {
                 return await GetSongsInAlbum(browseId);
             }
-            else
+            
+            var playlistId = HttpUtility.ParseQueryString(uri.Query).Get("list");
+            if (playlistId == null)
             {
-                // TODO playlist - https://github.com/sigma67/ytmusicapi/blob/main/ytmusicapi/mixins/playlists.py#L14
+                return [];
             }
+            return await GetSongsInPlaylist(playlistId);
 
-            return [];
         }
 
         public string GetSongSourceUrl(YoutubeMusicSong song)

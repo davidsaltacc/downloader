@@ -135,8 +135,8 @@ namespace Downloader.Utils
                 node = key switch
                 {
                     string s => node?[s],
-                    int i => node?.AsArray().ElementAtOrDefault(i),
-                    _ => null
+                    int i => i == -1 ? node?.AsArray().Last() : node?.AsArray()[i],
+                _ => null
                 };
             }
             return node;
