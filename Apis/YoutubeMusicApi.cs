@@ -548,13 +548,6 @@ namespace Downloader.Apis
             }
             return await GetSongsInPlaylist(playlistId);
             
-            // TODO   at SOME point in this long playlist
-            // TODO   https://music.youtube.com/playlist?list=PLOjmC1WoQt44X1tcZatgxy9BxNjRITyv9
-            // TODO   it errors
-            // TODO   so what we need to do
-            // TODO   1. better error logging in ui - or write log to file, probably doesn't matter which
-            // TODO   2. run that playlist again and catch the error that time and fix it
-
         }
 
         public async Task<YoutubeMusicSong[]> GetSongs(string url)
