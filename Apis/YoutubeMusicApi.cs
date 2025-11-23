@@ -232,6 +232,11 @@ namespace Downloader.Apis
                 // also some songs only exists as videos but not songs
             }
 
+            if (songData.Title.Length == 0)
+            {
+                return null;
+            }
+
             var artistsNameJoined = string.Join(" ", songData.Artists);
 
             var songTitleClean = Regex.Replace(songData.Title, @"[\p{S}]+", " ").Trim();
@@ -260,6 +265,11 @@ namespace Downloader.Apis
                 Search(artistsNameJoined + " " + songData.Title + " ", SearchFor.Videos),
                 Search(artistsNameJoined + " " + songData.Title + " " + songData.Album, SearchFor.Songs)
             ])).SelectMany(x => x).Distinct().ToList(), songData);
+
+            if (results.Count == 0)
+            {
+                return null;
+            }
 
             var finalSong = results.OrderBy(x => -x.Key).ToList()[0].Value;
             return new YoutubeMusicSong(songData.Album, songData.Artists, songData.Title, songData.DurationMs, songData.IndexOnDisk,
@@ -515,7 +525,7 @@ namespace Downloader.Apis
             }
         }
 
-        public async Task<YoutubeMusicSong[]> GetSongs(string url)
+        public async Task<YoutubeMusicSong[]> _GetSongs(string url)
         {
             var uri = new Uri(url);
             
@@ -537,7 +547,19 @@ namespace Downloader.Apis
                 return [];
             }
             return await GetSongsInPlaylist(playlistId);
+            
+            // TODO   at SOME point in this long playlist
+            // TODO   https://music.youtube.com/playlist?list=PLOjmC1WoQt44X1tcZatgxy9BxNjRITyv9
+            // TODO   it errors
+            // TODO   so what we need to do
+            // TODO   1. better error logging in ui - or write log to file, probably doesn't matter which
+            // TODO   2. run that playlist again and catch the error that time and fix it
 
+        }
+
+        public async Task<YoutubeMusicSong[]> GetSongs(string url)
+        {
+            return (await _GetSongs(url)).Where(song => song.Title.Length > 0 && song.YoutubeSongUrl.Length > 0).ToArray();
         }
 
         public string GetSongSourceUrl(YoutubeMusicSong song)

@@ -25,8 +25,11 @@ namespace Downloader
 
         public MainWindow()
         {
+
+            Logger.Init();
             InitializeComponent();
             DataContext = this;
+            
         }
 
         private void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -36,10 +39,13 @@ namespace Downloader
             {
                 try
                 {
+                    Logger.Log("Downloading started for query " + text);
                     await StartDownload(text);
                 } catch (Exception ex)
                 {
                     Debug.WriteLine(ex);
+                    Logger.Log("Error occured while processing");
+                    Logger.Log(ex.ToString());
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         IsBusy = false;
@@ -79,6 +85,8 @@ namespace Downloader
                 )
                 {
                     SetStatusText("Starting");
+                    
+                    Logger.Log("Starting dependency download");
 
                     if (!await DependencyDownloader.EnsureFFmpegInstalled())
                     {
@@ -96,24 +104,26 @@ namespace Downloader
                         await DependencyDownloader.DownloadLatestQjs();
                     }
 
+                    Logger.Log("Initializing APIs");
+                    
+                    var dataSource = YoutubeMusicApi.Instance; // TODO decide automatically
+                    var audioSource = YoutubeMusicApi.Instance;
+                    
                     Directory.CreateDirectory("./downloaded");
-                    await SpotifyApi.Instance.Init();
-                    await YoutubeMusicApi.Instance.Init();
-                    Song[] songs;
+                    await dataSource.Init();
+                    await audioSource.Init();
 
                     SetStatusText("Getting songs");
+                    Logger.Log("Getting songs");
                     
-                    // TODO use the functions in this downloading process here
                     // TODO improve UI (less hardcoded stuff, make it all configurable - nicer frontend)
                     // TODO add support for more services?
                     // TODO make installer & related
                     // TODO release
-
-                    var dataSource = YoutubeMusicApi.Instance; // TODO decide automatically
-                    var audioSource = YoutubeMusicApi.Instance;
                     
-                    songs = await dataSource.GetSongs(url);
+                    var songs = await dataSource.GetSongs(url);
 
+                    Logger.Log("Starting download");
                     SetStatusText("Downloading");
 
                     var semaphore = new SemaphoreSlim(5);
@@ -146,6 +156,9 @@ namespace Downloader
                         
                             if (exc != null)
                             {
+                                Logger.Log("Error occured while processing song at:");
+                                Logger.Log(trace ?? "");
+                                Logger.Log("-------");
                                 Debug.WriteLine("Error at:");
                                 Debug.WriteLine(trace);
                                 Debug.WriteLine("--------");
@@ -165,6 +178,7 @@ namespace Downloader
 
                     List<string?> newFilenames = [.. await Task.WhenAll(tasks)];
 
+                    Logger.Log("Writing playlist to file");
                     SetStatusText("Writing playlist");
 
                     var playlist = "#EXTM3U";
@@ -176,6 +190,7 @@ namespace Downloader
                     await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
 
                     SetStatusText("Done");
+                    Logger.Log("Finished download");
 
                     // TODO quality of life
 
@@ -196,7 +211,8 @@ namespace Downloader
 
         private static async Task<string?> ProcessSong<T>(ISongAudioSource<T> source, Song song, int slotId) where T : Song
         {
-
+            
+            Logger.Log("Finding match for song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
             var found = await source.FindSong(song);
             if (found == null)
@@ -204,6 +220,7 @@ namespace Downloader
                 return null;
             }
 
+            Logger.Log("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
             SetStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             var downloaded = await source.DownloadSong(found, "./downloaded", percentage => 
             {
@@ -223,6 +240,8 @@ namespace Downloader
             }
             _usedFilenames.Add(newFilename);
 
+            Logger.Log("Finishing song " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
+            
             SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             Utils.Utils.ApplyId3ToFile(downloaded, found, source.GetSongSourceUrl(found));
 
@@ -230,6 +249,7 @@ namespace Downloader
             File.Move(downloaded, newFilename, true);
 
             SetStatusText("", slotId);
+            Logger.Log("Fully downloaded song " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
             
             return newFilename;
 

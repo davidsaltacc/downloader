@@ -4,7 +4,7 @@ using Downloader.Utils.Songs;
 
 namespace Downloader.Apis;
 
-public interface ISongAudioSource<T> where T : Song
+public interface ISongAudioSource<T> : ISongApi where T : Song 
 {
     
     string GetSongSourceUrl(T song);
