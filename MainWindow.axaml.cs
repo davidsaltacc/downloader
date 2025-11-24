@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Interactivity;
 using Downloader.Apis;
 
 namespace Downloader
@@ -22,6 +23,7 @@ namespace Downloader
     {
 
         public static readonly HttpClient HttpClient = new();
+        private static bool _ignoreStatusTextChanges = false;
 
         public MainWindow()
         {
@@ -30,11 +32,48 @@ namespace Downloader
             InitializeComponent();
             DataContext = this;
             
+            foreach (var codec in Settings.AllCodecsAndFormats.Keys)
+            {
+                CodecSelectionBox.Items.Add(new ComboBoxItem
+                {
+                    Content = codec
+                });
+            }
+
+            CodecSelectionBox.SelectedIndex = new List<string>(Settings.AllCodecsAndFormats.Keys).IndexOf(Settings.Codec);
+            CodecSelectionBox.SelectionChanged += (_, args) =>
+            {
+                Settings.Codec = (string?) ((ComboBoxItem?) args.AddedItems[0])?.Content ?? Settings.DefaultCodec;
+                Logger.Log("Selected format " + Settings.Codec);
+            };
+
+            ThreadSelection.Value = Settings.Threads;
+            ThreadSelection.ValueChanged += (_, args) =>
+            {
+                Settings.Threads = (int) Math.Floor(args.NewValue ?? Settings.Threads); 
+                Logger.Log("Selected " + Settings.Threads + " concurrent threads");
+            };
+
         }
 
-        private void StartDownload_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private void SetThreadCount(int count)
         {
-            var text = DownloadURLBox.Text;
+            StatusTextsContainer.Children.Clear();
+            for (var i = 0; i < count; i++)
+            {
+                StatusTextsContainer.Children.Add(new TextBlock());
+            }
+            Settings.Threads = count;
+        }
+
+        private CancellationTokenSource _cts = new();
+
+        private void StartDownload_Click(object? sender, RoutedEventArgs e)
+        {
+            
+            SetThreadCount(Settings.Threads);
+            
+            var text = DownloadUrlBox.Text;
             Task.Run(async () =>
             {
                 try
@@ -43,21 +82,38 @@ namespace Downloader
                     await StartDownload(text);
                 } catch (Exception ex)
                 {
-                    Debug.WriteLine(ex);
-                    Logger.Log("Error occured while processing");
-                    Logger.Log(ex.ToString());
+                    if (ex is not OperationCanceledException)
+                    {
+                        Debug.WriteLine(ex);
+                        Logger.Log("Error occured while processing");
+                        Logger.Log(ex.ToString());
+                        SetStatusText("Error occurred");
+                        Directory.Delete("./downloaded", true);
+                    }
+                    else
+                    {
+                        SetStatusText("Cancelled");
+                        _ignoreStatusTextChanges = false;
+                        _cts = new CancellationTokenSource();
+                    }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        IsBusy = false;
+                        isBusy = false;
                     });
-                    SetStatusText("Error occurred");
-                    Directory.Delete("./downloaded", true);
                 }
-            });
+            }, _cts.Token);
+            
         }
 
-        public static readonly StyledProperty<bool> IsBusyProperty = AvaloniaProperty.Register<MainWindow, bool>(nameof(IsBusy));
-        public bool IsBusy
+        private void CancelDownload_Click(object? sender, RoutedEventArgs e)
+        {
+            SetStatusText("Cancelling");
+            _ignoreStatusTextChanges = true;
+            _cts.Cancel();
+        }
+
+        private static readonly StyledProperty<bool> IsBusyProperty = AvaloniaProperty.Register<MainWindow, bool>(nameof(isBusy));
+        public bool isBusy
         {
             get => GetValue(IsBusyProperty);
             set => SetValue(IsBusyProperty, value);
@@ -67,7 +123,7 @@ namespace Downloader
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                IsBusy = true;
+                isBusy = true;
             });
 
             var url = urlBoxText ?? "";
@@ -109,6 +165,9 @@ namespace Downloader
                     var dataSource = YoutubeMusicApi.Instance; // TODO decide automatically
                     var audioSource = YoutubeMusicApi.Instance;
                     
+                    if (Directory.Exists("./downloaded")) {
+                        Directory.Delete("./downloaded", true);
+                    }
                     Directory.CreateDirectory("./downloaded");
                     await dataSource.Init();
                     await audioSource.Init();
@@ -116,18 +175,13 @@ namespace Downloader
                     SetStatusText("Getting songs");
                     Logger.Log("Getting songs");
                     
-                    // TODO improve UI (less hardcoded stuff, make it all configurable - nicer frontend)
-                    // TODO add support for more services?
-                    // TODO make installer & related
-                    // TODO release
-                    
                     var songs = await dataSource.GetSongs(url);
 
                     Logger.Log("Starting download");
                     SetStatusText("Downloading");
 
-                    var semaphore = new SemaphoreSlim(5);
-                    var availableSlots = new ConcurrentQueue<int>([0, 1, 2, 3, 4]);
+                    var semaphore = new SemaphoreSlim(Settings.Threads);
+                    var availableSlots = new ConcurrentQueue<int>(Enumerable.Range(0, Settings.Threads));
                     var tasks = new List<Task<string?>>();
                     _usedFilenames = [];
 
@@ -137,7 +191,6 @@ namespace Downloader
                         availableSlots.TryDequeue(out var slotId);
                         
                         Exception? exc = null;
-                        string? trace = null;
                         
                         try
                         {
@@ -147,7 +200,6 @@ namespace Downloader
                         catch (Exception ex)
                         {
                             exc = ex;
-                            trace = ex.StackTrace;
                         }
                         finally
                         {
@@ -156,12 +208,9 @@ namespace Downloader
                         
                             if (exc != null)
                             {
-                                Logger.Log("Error occured while processing song at:");
-                                Logger.Log(trace ?? "");
+                                Logger.Log("Error occured while processing song: " + exc.Message);
+                                Logger.Log(exc.StackTrace ?? "");
                                 Logger.Log("-------");
-                                Debug.WriteLine("Error at:");
-                                Debug.WriteLine(trace);
-                                Debug.WriteLine("--------");
                                 throw exc;
                             }
                         }
@@ -192,8 +241,6 @@ namespace Downloader
                     SetStatusText("Done");
                     Logger.Log("Finished download");
 
-                    // TODO quality of life
-
                 } else
                 {
                     SetStatusText("Must be a Spotify URL");
@@ -202,15 +249,17 @@ namespace Downloader
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                IsBusy = false;
+                isBusy = false;
             });
 
         }
 
         private static List<string> _usedFilenames = [];
 
-        private static async Task<string?> ProcessSong<T>(ISongAudioSource<T> source, Song song, int slotId) where T : Song
+        private async Task<string?> ProcessSong<T>(ISongAudioSource<T> source, Song song, int slotId) where T : Song
         {
+            
+            _cts.Token.ThrowIfCancellationRequested();
             
             Logger.Log("Finding match for song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
@@ -275,43 +324,20 @@ namespace Downloader
 
         private static void SetStatusText(string text, int taskId = -1)
         {
+            if (_ignoreStatusTextChanges && taskId == -1)
+            {
+                return;
+            }
             Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
                     var mw = (MainWindow) desktop.MainWindow;
-                    switch (taskId)
+                    if (taskId == -1)
                     {
-                        default:
-                            {
-                                mw.StatusText.Text = text;
-                                break;
-                            }
-                        case 0:
-                            {
-                                mw.StatusText1.Text = text;
-                                break;
-                            }
-                        case 1:
-                            {
-                                mw.StatusText2.Text = text;
-                                break;
-                            }
-                        case 2:
-                            {
-                                mw.StatusText3.Text = text;
-                                break;
-                            }
-                        case 3:
-                            {
-                                mw.StatusText4.Text = text;
-                                break;
-                            }
-                        case 4:
-                            {
-                                mw.StatusText5.Text = text;
-                                break;
-                            }
+                        mw.StatusText.Text = text;
+                    } else {
+                        ((TextBlock) mw.StatusTextsContainer.Children[taskId]).Text = text;
                     }
                 }
             });

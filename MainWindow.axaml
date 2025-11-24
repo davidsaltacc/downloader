@@ -22,18 +22,45 @@
 			<TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12">Downloader</TextBlock>
 		</Grid>
 
-        <Border Grid.Row="1" Padding="10" Background="#7f101010">
-            <StackPanel>
-                <TextBox Watermark="Input URL" x:Name="DownloadURLBox"></TextBox>
-                <Button Click="StartDownload_Click" IsEnabled="{Binding !IsBusy}">Start Downloading</Button>
-                <TextBlock x:Name="StatusText"></TextBlock>
-                <TextBlock x:Name="StatusText1"></TextBlock>
-                <TextBlock x:Name="StatusText2"></TextBlock>
-                <TextBlock x:Name="StatusText3"></TextBlock>
-                <TextBlock x:Name="StatusText4"></TextBlock>
-                <TextBlock x:Name="StatusText5"></TextBlock>
-            </StackPanel>
-        </Border>
+	    <TabControl Grid.Row="1" Background="#7f101010">
+		    <TabItem Header="Downloading">
+		        <Border Padding="10">
+	            	<StackPanel>
+		        	    <TextBox Watermark="Input URL" x:Name="DownloadUrlBox"></TextBox>
+			            <StackPanel Orientation="Horizontal">
+				            <Button Click="StartDownload_Click" IsEnabled="{Binding !isBusy}">Start Downloading</Button>
+				            <Button Click="CancelDownload_Click" IsEnabled="{Binding isBusy}">Cancel</Button>
+			            </StackPanel>
+			            <TextBlock x:Name="StatusText"></TextBlock>
+				           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+					           <StackPanel x:Name="StatusTextsContainer"></StackPanel>
+				           </ScrollViewer>
+	            	</StackPanel>
+		        </Border>
+		    </TabItem>
+		    <TabItem Header="Settings">
+			    <Border Padding="10">
+				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+					    <StackPanel Margin="10" Orientation="Vertical">
+						    <StackPanel Orientation="Horizontal">
+							    <TextBlock VerticalAlignment="Center">
+								    Codec
+							    </TextBlock>
+							    <Border Margin="10,0,0,0"></Border>
+							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
+						    </StackPanel>
+						    <StackPanel Orientation="Horizontal">
+							    <TextBlock VerticalAlignment="Center">
+								    Concurrent Downloads
+							    </TextBlock>
+							    <Border Margin="10,0,0,0"></Border>
+							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" x:Name="ThreadSelection"></NumericUpDown>
+						    </StackPanel>
+					    </StackPanel>
+				    </ScrollViewer>
+			    </Border>
+		    </TabItem>
+	    </TabControl>
 
     </Grid>
 </Window>

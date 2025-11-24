@@ -34,10 +34,10 @@ namespace Downloader.Utils
             ExtractFileFromArchive(archive, targetFile, extractFolder);
         }
 
-        public static void ExtractAllFilesFromZipArchive(string archiveFile, string extractFolder)
+        public static void ExtractAllFilesFromZipArchive(string archiveFile, string extractFolder, bool flat = false)
         {
             using var archive = ZipArchive.Open(archiveFile);
-            ExtractAllFilesFromArchive(archive, extractFolder);
+            ExtractAllFilesFromArchive(archive, extractFolder, flat);
         }
 
         private static void ExtractFileFromArchive(IArchive archive, string targetFile, string extractFolder)
@@ -58,19 +58,26 @@ namespace Downloader.Utils
             }
         }
 
-        private static void ExtractAllFilesFromArchive(IArchive archive, string extractFolder)
+        private static void ExtractAllFilesFromArchive(IArchive archive, string extractFolder, bool flat = false)
         {
             foreach (var entry in archive.Entries)
             {
-                if (entry.Key == null)
+                if (entry.Key == null || entry.IsDirectory)
                 {
                     continue;
                 }
-                var extractDir = Path.GetDirectoryName(extractFolder);
-                if (extractDir != null && extractDir.Length > 0) {
-                    Directory.CreateDirectory(extractDir);
+
+                try
+                {
+                    Directory.CreateDirectory(extractFolder);
+                } catch (IOException _) {}
+
+                if (flat)
+                {
+                    entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(entry.Key)), new ExtractionOptions { Overwrite = true });
+                } else {
+                    entry.WriteToDirectory(extractFolder, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
                 }
-                entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(entry.Key)), new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
             }
         }
 

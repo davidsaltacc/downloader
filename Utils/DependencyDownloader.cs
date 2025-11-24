@@ -14,33 +14,39 @@ namespace Downloader.Utils
 
         public static async Task<bool> EnsureFFmpegInstalled()
         {
-            try
-            {
-                using var process = Process.Start(new ProcessStartInfo
+
+            return await Test("ffmpeg.exe") && await Test("ffprobe.exe");
+            
+            async Task<bool> Test(string file) {
+                try
                 {
-                    FileName = "ffmpeg.exe",
-                    Arguments = "-version",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
-                if (process == null)
-                {
+                    using var process = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = file,
+                        Arguments = "-version",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                    if (process == null)
+                    {
+                        return false;
+                    }
+                    await process.WaitForExitAsync();
+                    return true;
+                }
+                catch {
                     return false;
                 }
-                await process.WaitForExitAsync();
-                return true;
-            }
-            catch {
-                return false;
             }
         }
 
         public static async Task DownloadLatestFFmpeg()
         {
-            var file = await Utils.DownloadFile("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z", ".");
-            var latestFileVersion = await (await MainWindow.HttpClient.GetAsync("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z.ver")).Content.ReadAsStringAsync();
-            Utils.ExtractFileFrom7ZipArchive("ffmpeg-git-essentials.7z", "ffmpeg-" + latestFileVersion + "-essentials_build/bin/ffmpeg.exe", ".");
+            var file = await Utils.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip", ".");
+            Utils.ExtractAllFilesFromZipArchive(file, ".");
+            Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f => File.Move(f, Path.Combine(".", Path.GetFileName(f))));
             File.Delete(file);
+            Directory.Delete("./ffmpeg-master-latest-win64-lgpl-shared", true);
         }
         
         public static async Task<bool> EnsureLatestQjsInstalled()
@@ -76,7 +82,7 @@ namespace Downloader.Utils
         {
             var latest = JsonNode.Parse(await (await MainWindow.HttpClient.GetAsync("https://bellard.org/quickjs/binary_releases/LATEST.json")).Content.ReadAsStringAsync())?["version"]?.ToString();
             var file = await Utils.DownloadFile("https://bellard.org/quickjs/binary_releases/quickjs-win-x86_64-" + latest + ".zip", ".");
-            Utils.ExtractAllFilesFromZipArchive("quickjs-win-x86_64-" + latest + ".zip", ".");
+            Utils.ExtractAllFilesFromZipArchive("quickjs-win-x86_64-" + latest + ".zip", ".", true);
             File.Delete(file);
         }
         
