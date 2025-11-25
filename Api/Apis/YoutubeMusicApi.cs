@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Downloader.Utils;
 
-namespace Downloader.Apis
+namespace Downloader.Api.Apis
 {
     internal class YoutubeMusicApi : ISongDataSource, ISongAudioSource
     {

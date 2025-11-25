@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Downloader.Utils.Songs;
 
-namespace Downloader.Apis;
+namespace Downloader.Api.Apis;
 
 public interface ISongAudioSource : ISongApi
 {

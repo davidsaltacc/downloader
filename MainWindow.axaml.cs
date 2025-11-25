@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Interactivity;
-using Downloader.Apis;
+using Downloader.Api.Apis;
 
 namespace Downloader
 {

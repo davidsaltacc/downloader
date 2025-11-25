@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Downloader.Apis;
+using Downloader.Api.Apis;
 
 namespace Downloader.Utils;
 

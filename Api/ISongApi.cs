@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Downloader.Apis;
+namespace Downloader.Api.Apis;
 
 public interface ISongApi
 {

@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
 
-namespace Downloader.Apis
+namespace Downloader.Api.Apis
 {
     internal class SpotifyApi : ISongDataSource
     {
