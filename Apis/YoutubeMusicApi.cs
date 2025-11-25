@@ -12,7 +12,7 @@ using Downloader.Utils;
 
 namespace Downloader.Apis
 {
-    internal class YoutubeMusicApi : ISongDataSource<YoutubeMusicSong>, ISongAudioSource<YoutubeMusicSong>
+    internal class YoutubeMusicApi : ISongDataSource, ISongAudioSource
     {
         
         private YoutubeMusicApi() {}
@@ -113,7 +113,7 @@ namespace Downloader.Apis
             )?.AsArray();
         }
 
-        private async Task<YoutubeMusicSong?> GetSong(string url, bool skipQueryingAlbum = false)
+        private async Task<Song?> GetSong(string url, bool skipQueryingAlbum = false)
         {
 
             var videoId = HttpUtility.ParseQueryString(new Uri(url).Query)["v"];
@@ -185,7 +185,7 @@ namespace Downloader.Apis
                 }
             }
             
-            return new YoutubeMusicSong(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc ?? -1, 0, releaseYear ?? -1, thumbnail, url);
+            return new Song(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc ?? -1, 0, releaseYear ?? -1, thumbnail, url, GetId());
 
         }
 
@@ -222,10 +222,10 @@ namespace Downloader.Apis
             
         }
 
-        public async Task<YoutubeMusicSong?> FindSong(Song songData)
+        public async Task<Song?> FindSong(Song songData)
         {
 
-            if (songData is YoutubeMusicSong song)
+            if (songData.SourceApi == GetId())
             {
                 // return song;
                 // ya'd think. but for some reason, some videos are age-restricted, though their songs are not
@@ -272,14 +272,14 @@ namespace Downloader.Apis
             }
 
             var finalSong = results.OrderBy(x => -x.Key).ToList()[0].Value;
-            return new YoutubeMusicSong(songData.Album, songData.Artists, songData.Title, songData.DurationMs, songData.IndexOnDisk,
-                    songData.DiskIndex, songData.ReleaseYear, songData.ImageUrl, finalSong.YoutubeSongUrl);
+            return new Song(songData.Album, songData.Artists, songData.Title, songData.DurationMs, songData.IndexOnDisk,
+                    songData.DiskIndex, songData.ReleaseYear, songData.ImageUrl, finalSong.SongUrl, GetId());
 
         }
         
-        private List<KeyValuePair<float, YoutubeMusicSong>> ScoreFoundSongs(List<YoutubeMusicSong> songs, Song originalSong)
+        private List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong)
         {
-            List<KeyValuePair<float, YoutubeMusicSong>> scored = [];
+            List<KeyValuePair<float, Song>> scored = [];
 
             foreach (var song in songs)
             {
@@ -304,7 +304,7 @@ namespace Downloader.Apis
 
                 score /= max;
                 
-                scored.Add(new KeyValuePair<float, YoutubeMusicSong>( score, song ));
+                scored.Add(new KeyValuePair<float, Song>( score, song ));
 
             }
 
@@ -318,7 +318,7 @@ namespace Downloader.Apis
             Videos = 18769 // IQ
         }
 
-        private async Task<List<YoutubeMusicSong>> Search(string query, SearchFor searchFor) 
+        private async Task<List<Song>> Search(string query, SearchFor searchFor) 
         {
 
             var searchParams = "EgWKAQ"; // enable filter
@@ -359,7 +359,7 @@ namespace Downloader.Apis
             }
             var results = contents?[musicShelfIndex]?["musicShelfRenderer"]?["contents"];
 
-            List<YoutubeMusicSong> songsReturned = [];
+            List<Song> songsReturned = [];
 
             foreach (var song in results?.AsArray() ?? [])
             {
@@ -391,7 +391,7 @@ namespace Downloader.Apis
                     }
                 }
 
-                songsReturned.Add(new YoutubeMusicSong(album ?? "", [.. artists], title ?? "",  (int) Math.Floor(duration?.TotalMilliseconds ?? -1), -1, -1, -1, "", "https://www.youtube.com/watch?v=" + videoId)); 
+                songsReturned.Add(new Song(album ?? "", [.. artists], title ?? "",  (int) Math.Floor(duration?.TotalMilliseconds ?? -1), -1, -1, -1, "", "https://www.youtube.com/watch?v=" + videoId, GetId())); 
 
             }
 
@@ -415,7 +415,7 @@ namespace Downloader.Apis
             return new List<Group>(match.Groups).ElementAtOrDefault(1)?.Value;
         }
 
-        private async Task<YoutubeMusicSong[]> GetSongsInAlbum(string browseId)
+        private async Task<Song[]> GetSongsInAlbum(string browseId)
         {
             var albumData = await GetAlbumDataFromBrowseId(browseId);
             if (albumData == null)
@@ -435,7 +435,7 @@ namespace Downloader.Apis
                 
                 if (songData == null)
                 {
-                    return new YoutubeMusicSong("", [""], "", 0, 0, 0, 0, "", "");
+                    return new Song("", [""], "", 0, 0, 0, 0, "", "", GetId());
                 }
                 
                 songData.Title = Utils.Utils.NavigateJsonNode(
@@ -459,11 +459,11 @@ namespace Downloader.Apis
                 songData.IndexOnDisk = index;
                 songData.DiskIndex = 0;
                 return songData;
-            }).Select(t => t.Result).Where(s => s.YoutubeSongUrl.Length > 0 && s.Title.Length > 0 && s.DurationMs > 0).ToArray() ?? [];
+            }).Select(t => t.Result).Where(s => s.SongUrl.Length > 0 && s.Title.Length > 0 && s.DurationMs > 0).ToArray() ?? [];
 
         }
 
-        private async Task<YoutubeMusicSong[]> GetSongsInPlaylist(string playlistId)
+        private async Task<Song[]> GetSongsInPlaylist(string playlistId)
         {
             var browseId = playlistId.StartsWith("VL") ? playlistId : ("VL" + playlistId);
             var response = await SendApiRequest("browse", @"{ ""browseId"": """ + browseId + @""" }");
@@ -473,7 +473,7 @@ namespace Downloader.Apis
             }
 
             var data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-            List<YoutubeMusicSong> songs = [];
+            List<Song> songs = [];
 
             await AddSongs(data, false);
 
@@ -525,7 +525,7 @@ namespace Downloader.Apis
             }
         }
 
-        public async Task<YoutubeMusicSong[]> _GetSongs(string url)
+        public async Task<Song[]> _GetSongs(string url)
         {
             var uri = new Uri(url);
             
@@ -550,19 +550,29 @@ namespace Downloader.Apis
             
         }
 
-        public async Task<YoutubeMusicSong[]> GetSongs(string url)
+        public async Task<Song[]> GetSongs(string url)
         {
-            return (await _GetSongs(url)).Where(song => song.Title.Length > 0 && song.YoutubeSongUrl.Length > 0).ToArray();
+            return (await _GetSongs(url)).Where(song => song.Title.Length > 0 && song.SongUrl.Length > 0).ToArray();
         }
 
-        public string GetSongSourceUrl(YoutubeMusicSong song)
-        {
-            return song.YoutubeSongUrl;
-        }
-
-        public async Task<string?> DownloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
+        public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
         {
             return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate);
+        }
+        
+        public bool UrlPartOfPlatform(string url)
+        {
+            return new Uri(url).Host.Contains("music.youtube", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        public string GetName()
+        {
+            return "Youtube Music";
+        }
+        
+        public string GetId()
+        {
+            return "ytmusic";
         }
         
     }

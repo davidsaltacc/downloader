@@ -12,10 +12,11 @@ namespace Downloader.Utils
     internal abstract class YtDlpApi
     {
 
-        public static async Task<string> DownloadSong(YoutubeMusicSong song, string folder, Action<int> onProgressUpdate)
+        public static async Task<string> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
         {
 
-            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.YoutubeSongUrl).Query).Get("v") + "." + Settings.AllCodecsAndFormats[Settings.Codec]).Replace("\\", "/");
+            // TODO if we wanna support other platforms beside yt, adjust file naming
+            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v") + "." + Settings.AllCodecsAndFormats[Settings.Codec]).Replace("\\", "/");
 
             var process = new Process
             {
@@ -23,7 +24,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --no-js-runtimes --js-runtimes quickjs --no-part --newline --progress -o \"{fullFilePath}\" --progress -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.YoutubeSongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --no-js-runtimes --js-runtimes quickjs --no-part --newline --progress -o \"{fullFilePath}\" --progress -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.SongUrl}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

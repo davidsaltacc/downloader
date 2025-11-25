@@ -11,7 +11,9 @@ namespace Downloader.Utils.Songs
         int indexOnDisk,
         int diskIndex,
         int releaseYear,
-        string imageUrl)
+        string imageUrl,
+        string songUrl,
+        string sourceApi)
     {
         public string Album = album;
         public string[] Artists = artists;
@@ -21,6 +23,8 @@ namespace Downloader.Utils.Songs
         public int DiskIndex = diskIndex;
         public int ReleaseYear = releaseYear;
         public string ImageUrl = imageUrl;
+        public string SongUrl = songUrl;
+        public string SourceApi = sourceApi;
 
         public static bool operator == (Song? left, Song? right)
         {
@@ -32,13 +36,15 @@ namespace Downloader.Utils.Songs
                 left.IndexOnDisk == right.IndexOnDisk &&
                 left.DiskIndex == right.DiskIndex &&
                 left.ReleaseYear == right.ReleaseYear &&
-                left.ImageUrl == right.ImageUrl
+                left.ImageUrl == right.ImageUrl &&
+                left.SongUrl == right.SongUrl && 
+                left.SourceApi == right.SourceApi
             );
         }
 
         public static bool operator !=(Song? left, Song? right) => !(left == right);
 
-        public override int GetHashCode() => (Album, String.Join(", ", Artists), Title,  DurationMs, IndexOnDisk, DiskIndex, ReleaseYear, ImageUrl).GetHashCode();
+        public override int GetHashCode() => (Album, String.Join(", ", Artists), Title,  DurationMs, IndexOnDisk, DiskIndex, ReleaseYear, ImageUrl, SongUrl, SourceApi).GetHashCode();
 
         public override bool Equals(object? obj)
         {

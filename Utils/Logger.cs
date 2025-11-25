@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Avalonia.Controls;
 
 namespace Downloader.Utils;
 
@@ -10,6 +11,10 @@ public abstract class Logger
 
     public static void Init()
     {
+        if (Design.IsDesignMode)
+        {
+            return;
+        }
         _logWriter = new StreamWriter(
             new FileStream("downloader.log", FileMode.Create, FileAccess.Write, FileShare.Read))
         {
@@ -21,6 +26,10 @@ public abstract class Logger
     
     public static void Log(string message)
     {
+        if (Design.IsDesignMode)
+        {
+            return;
+        }
         lock (Lock)
         {
             Console.WriteLine(message);

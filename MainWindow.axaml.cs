@@ -39,6 +39,15 @@ namespace Downloader
                     Content = codec
                 });
             }
+            
+            foreach (var api in Settings.AllSongAudioSources)
+            {
+                AudioSourceSelectionBox.Items.Add(new ComboBoxItem
+                {
+                    Content = ISongApi.GetApiById(api)?.GetName() ?? "",
+                    Name = "AudioSourceSelection_" + api
+                });
+            }
 
             CodecSelectionBox.SelectedIndex = new List<string>(Settings.AllCodecsAndFormats.Keys).IndexOf(Settings.Codec);
             CodecSelectionBox.SelectionChanged += (_, args) =>
@@ -52,6 +61,13 @@ namespace Downloader
             {
                 Settings.Threads = (int) Math.Floor(args.NewValue ?? Settings.Threads); 
                 Logger.Log("Selected " + Settings.Threads + " concurrent threads");
+            };
+
+            AudioSourceSelectionBox.SelectedIndex = Settings.AllSongAudioSources.IndexOf(Settings.SongAudioSource);
+            AudioSourceSelectionBox.SelectionChanged += (_, args) =>
+            {
+                Settings.SongAudioSource = ((ComboBoxItem?) args.AddedItems[0])?.Name?.Replace("AudioSourceSelection_", "") ?? Settings.DefaultSongAudioSource;
+                Logger.Log("Selected audio source " + Settings.SongAudioSource);
             };
 
         }
@@ -98,6 +114,7 @@ namespace Downloader
                     }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
+                        StatusTextsContainer.Children.Clear();
                         isBusy = false;
                     });
                 }
@@ -134,10 +151,10 @@ namespace Downloader
             {
                 SetStatusText("Invalid URL");
             } else
-            { 
+            {
+                var dataSource = ISongDataSource.AllSongDataSources.Find(s => s.UrlPartOfPlatform(url));
                 if (
-                    (uriResult?.Host.Contains("spotify", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (uriResult?.Host.Contains("music.youtube", StringComparison.OrdinalIgnoreCase) ?? false)
+                    dataSource != null
                 )
                 {
                     SetStatusText("Starting");
@@ -162,8 +179,12 @@ namespace Downloader
 
                     Logger.Log("Initializing APIs");
                     
-                    var dataSource = YoutubeMusicApi.Instance; // TODO decide automatically
-                    var audioSource = YoutubeMusicApi.Instance;
+                    var audioSource = ISongAudioSource.FromISongApi(ISongApi.GetApiById(Settings.SongAudioSource) ?? ISongApi.GetApiById(Settings.DefaultSongAudioSource) ?? YoutubeMusicApi.Instance);
+
+                    if (audioSource == null)
+                    {
+                        throw new Exception("Could not find audio source class");
+                    }
                     
                     if (Directory.Exists("./downloaded")) {
                         Directory.Delete("./downloaded", true);
@@ -243,7 +264,7 @@ namespace Downloader
 
                 } else
                 {
-                    SetStatusText("Must be a Spotify URL");
+                    SetStatusText("Platform not supported");
                 }
             }
 
@@ -256,7 +277,7 @@ namespace Downloader
 
         private static List<string> _usedFilenames = [];
 
-        private async Task<string?> ProcessSong<T>(ISongAudioSource<T> source, Song song, int slotId) where T : Song
+        private async Task<string?> ProcessSong(ISongAudioSource source, Song song, int slotId) 
         {
             
             _cts.Token.ThrowIfCancellationRequested();
@@ -292,7 +313,7 @@ namespace Downloader
             Logger.Log("Finishing song " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
             
             SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            Utils.Utils.ApplyId3ToFile(downloaded, found, source.GetSongSourceUrl(found));
+            Utils.Utils.ApplyId3ToFile(downloaded, found, found.SongUrl);
 
             SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
             File.Move(downloaded, newFilename, true);

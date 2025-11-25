@@ -49,13 +49,23 @@
 							    <Border Margin="10,0,0,0"></Border>
 							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
 						    </StackPanel>
+						    <Border Margin="0,10,0,0"></Border>
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Concurrent Downloads
 							    </TextBlock>
 							    <Border Margin="10,0,0,0"></Border>
-							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" x:Name="ThreadSelection"></NumericUpDown>
+							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" ShowButtonSpinner="False" x:Name="ThreadSelection"></NumericUpDown>
 						    </StackPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    <StackPanel Orientation="Horizontal">
+							    <TextBlock VerticalAlignment="Center">
+								    Audio Source
+							    </TextBlock>
+							    <Border Margin="10,0,0,0"></Border>
+							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="AudioSourceSelectionBox"></ComboBox>
+						    </StackPanel>
+						    <Border Margin="0,10,0,0"></Border>
 					    </StackPanel>
 				    </ScrollViewer>
 			    </Border>

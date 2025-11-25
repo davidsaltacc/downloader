@@ -1,14 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Downloader.Utils.Songs;
 
 namespace Downloader.Apis;
 
-public interface ISongAudioSource<T> : ISongApi where T : Song 
+public interface ISongAudioSource : ISongApi
 {
     
-    string GetSongSourceUrl(T song);
-    Task<T?> FindSong(Song originalSong);
-    Task<string?> DownloadSong(T song, string folder, Action<int> onProgressUpdate);
-    
+    Task<Song?> FindSong(Song originalSong);
+    Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate);
+
+    public static ISongAudioSource? FromISongApi(ISongApi api)
+    {
+        return api is ISongAudioSource api2 ? api2 : null;
+    }
+
+    public static readonly List<ISongAudioSource> AllSongAudioSources =
+        AllApis.FindAll(s => s is ISongAudioSource).ConvertAll(s => (ISongAudioSource) s);
+
 }

@@ -60,7 +60,7 @@
 	        <Setter Property="Padding" Value="0" />
         </Style>
 
-        <Style Selector="TabItem Border">
+        <Style Selector="TabItem>Border">
 	        <Setter Property="Margin" Value="0" />
 	        <Setter Property="BorderBrush" Value="#2f2f2f" />
 	        <Setter Property="BorderThickness" Value="0,1,0,0" />

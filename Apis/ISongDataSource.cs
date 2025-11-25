@@ -1,11 +1,21 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Downloader.Utils.Songs;
 
 namespace Downloader.Apis;
 
-public interface ISongDataSource<T> : ISongApi where T : Song
+public interface ISongDataSource : ISongApi
 {
     
-    Task<T[]> GetSongs(string url);
+    Task<Song[]> GetSongs(string url);
+    bool UrlPartOfPlatform(string url);
+    
+    public static ISongDataSource? FromISongApi(ISongApi api)
+    {
+        return api is ISongDataSource api2 ? api2 : null;
+    }
+    
+    public static readonly List<ISongDataSource> AllSongDataSources =
+        AllApis.FindAll(s => s is ISongDataSource).ConvertAll(s => (ISongDataSource) s);
 
 }

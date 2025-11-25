@@ -11,7 +11,7 @@ using System.Web;
 
 namespace Downloader.Apis
 {
-    internal class SpotifyApi : ISongDataSource<SpotifySong>
+    internal class SpotifyApi : ISongDataSource
     {
         
         private SpotifyApi() {}
@@ -156,7 +156,7 @@ namespace Downloader.Apis
             public required Track[] tracks { get; set; }
         }
 
-        public async Task<SpotifySong[]> GetSongsFromURLs(string[] urls)
+        public async Task<Song[]> GetSongsFromURLs(string[] urls)
         {
 
             var ids = new string?[urls.Length];
@@ -194,12 +194,12 @@ namespace Downloader.Apis
                 // TODO if error here - more specifically, "HTTP 400 - invalid base62 id" - then the song/album/playlist doesnt exist
             }
 
-            var songs = new SpotifySong[allTracks.Count];
+            var songs = new Song[allTracks.Count];
 
             i = 0;
             foreach (var songData in allTracks)
             {
-                songs[i] = new SpotifySong(
+                songs[i] = new Song(
                     songData.album.name,
                     songData.artists.Select(artist => artist.name).ToArray(),
                     songData.name,
@@ -208,7 +208,8 @@ namespace Downloader.Apis
                     songData.disc_number,
                     int.Parse(songData.album.release_date.Split("-")[0]),
                     songData.album.images[0].url,
-                    urls[i]
+                    urls[i],
+                    GetId()
                 );
                 i++;
             }
@@ -231,7 +232,7 @@ namespace Downloader.Apis
             public required Track[] items { get; set; }
         }
 
-        public async Task<SpotifySong[]> GetSongsInAlbum(string albumUrl)
+        public async Task<Song[]> GetSongsInAlbum(string albumUrl)
         {
             List<string> urls = [];
 
@@ -274,7 +275,7 @@ namespace Downloader.Apis
             public required PlaylistTrack[] items { get; set; }
         }
 
-        public async Task<SpotifySong[]> GetSongsInPlaylist(string playlistUrl)
+        public async Task<Song[]> GetSongsInPlaylist(string playlistUrl)
         {
             List<string> urls = [];
 
@@ -298,7 +299,7 @@ namespace Downloader.Apis
             }
         }
 
-        public async Task<SpotifySong[]> GetSongs(string url)
+        public async Task<Song[]> GetSongs(string url)
         {
             var uri = new Uri(url);
             if (uri.AbsolutePath.StartsWith("/track"))
@@ -314,6 +315,21 @@ namespace Downloader.Apis
                 return await GetSongsInPlaylist(url);
             }
             return [];
+        }
+
+        public bool UrlPartOfPlatform(string url)
+        {
+            return new Uri(url).Host.Contains("open.spotify", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public string GetName()
+        {
+            return "Spotify";
+        }
+        
+        public string GetId()
+        {
+            return "spotify";
         }
     }
 }
