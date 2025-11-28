@@ -160,7 +160,7 @@ namespace Downloader.Utils
             return node;
         }
         
-        public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong)
+        public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong, bool allowTitleArtistOverlap)
         {
             List<KeyValuePair<float, Song>> scored = [];
 
@@ -184,6 +184,8 @@ namespace Downloader.Utils
                 score += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
                          (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
                 max += 1;
+                
+                // TODO if allowTitleArtistOverlap, take the basic scoring we already have, and scoring strings like "ARTIST TITLE", choose the max (for each artist-title string) and then choose the max (basic scoring - new scoring) - or something like that idk
 
                 score /= max;
                 

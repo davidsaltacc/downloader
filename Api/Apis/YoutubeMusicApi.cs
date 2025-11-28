@@ -264,7 +264,7 @@ namespace Downloader.Api.Apis
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
                 Search(artistsNameJoined + " " + songData.Title + " ", SearchFor.Videos),
                 Search(artistsNameJoined + " " + songData.Title + " " + songData.Album, SearchFor.Songs)
-            ])).SelectMany(x => x).Distinct().ToList(), songData);
+            ])).SelectMany(x => x).Distinct().ToList(), songData, false);
 
             if (results.Count == 0)
             {

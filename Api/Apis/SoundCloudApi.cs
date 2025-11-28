@@ -126,8 +126,7 @@ public class SoundCloudApi : ISongAudioSource
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean),
                 Search(artistsNameJoined + " " + originalSong.Title + " "),
                 Search(artistsNameJoined + " " + originalSong.Title + " " + originalSong.Album)
-            ])).SelectMany(x => x).Distinct().ToList(), originalSong);
-            // TODO custom scoring -> allow "artist - title" in song titles, because a lot of them are reuploads
+            ])).SelectMany(x => x).Distinct().ToList(), originalSong, true);
 
             if (results.Count == 0)
             {
