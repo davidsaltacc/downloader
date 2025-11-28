@@ -44,7 +44,14 @@ namespace Downloader.Utils
         {
             var file = await Utils.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip", ".");
             Utils.ExtractAllFilesFromZipArchive(file, ".");
-            Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f => File.Move(f, Path.Combine(".", Path.GetFileName(f))));
+            Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f =>
+            {
+                if (File.Exists(f))
+                {
+                    File.Delete(f);
+                }
+                File.Move(f, Path.Combine(".", Path.GetFileName(f)));
+            });
             File.Delete(file);
             Directory.Delete("./ffmpeg-master-latest-win64-lgpl-shared", true);
         }
