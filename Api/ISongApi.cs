@@ -12,7 +12,8 @@ public interface ISongApi
 
     public static readonly List<ISongApi> AllApis = [
         SpotifyApi.Instance, 
-        YoutubeMusicApi.Instance
+        YoutubeMusicApi.Instance,
+        SoundCloudApi.Instance
     ];
 
     public static ISongApi? GetApiById(string id)

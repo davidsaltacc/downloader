@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Downloader.Api;
 using Downloader.Api.Apis;
 
 namespace Downloader.Utils;
@@ -8,13 +9,23 @@ public abstract class Settings
 
     // codec name -> container file ending
     public static readonly Dictionary<string, string> AllCodecsAndFormats = new Dictionary<string, string>{
-        { "aac", "aac" },
+        { "aac", "m4a" },
         { "alac", "m4a" },
         { "flac", "flac" },
         { "mp3", "mp3" },
         { "opus", "opus" },
         { "vorbis", "ogg" },
         { "wav", "wav" },
+    };
+    
+    public static readonly Dictionary<string, string> AllCodecsAndMimetypes = new Dictionary<string, string>{
+        { "aac", "audio/mp4" },
+        { "alac", "audio/mp4" },
+        { "flac", "audio/flac" },
+        { "mp3", "audio/mpeg" },
+        { "opus", "audio/opus" },
+        { "vorbis", "audio/ogg" },
+        { "wav", "audio/wav" },
     };
 
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());

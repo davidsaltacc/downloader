@@ -2,14 +2,19 @@
 using SharpCompress.Archives.SevenZip;
 using SharpCompress.Common;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Downloader.Utils.Songs;
 using SharpCompress.Archives.Zip;
+using TagLib;
 using TagLib.Id3v2;
+using File = System.IO.File;
+using Tag = TagLib.Id3v2.Tag;
 
 namespace Downloader.Utils
 {
@@ -26,6 +31,12 @@ namespace Downloader.Utils
             await stream.CopyToAsync(file);
             return path;
 
+        }
+
+        public static void ExtractFileFromZipArchive(string archiveFile, string targetFile, string extractFolder)
+        {
+            using var archive = ZipArchive.Open(archiveFile);
+            ExtractFileFromArchive(archive, targetFile, extractFolder);
         }
 
         public static void ExtractFileFrom7ZipArchive(string archiveFile, string targetFile, string extractFolder)
@@ -86,7 +97,7 @@ namespace Downloader.Utils
 
             Tag.DefaultVersion = 3;
             Tag.ForceDefaultVersion = true;
-            var taggedFile = TagLib.File.Create(file);
+            var taggedFile = TagLib.File.Create(file, Settings.AllCodecsAndMimetypes[Settings.AllCodecsAndFormats.Keys.First(s => Settings.AllCodecsAndFormats[s] == file.Split(".").Last())], ReadStyle.Average);
 
             if (song.Title.Length > 0)
             {
@@ -147,6 +158,45 @@ namespace Downloader.Utils
                 };
             }
             return node;
+        }
+        
+        public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong)
+        {
+            List<KeyValuePair<float, Song>> scored = [];
+
+            foreach (var song in songs)
+            {
+                
+                var score = 0f;
+                var max = 0f;
+
+                score += FuzzySharp.Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
+                max += 1;
+                
+                score += FuzzySharp.Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
+                max += 0.65f;
+                
+                if (song.DurationMs > 0) {
+                    score += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
+                    max += 1f;
+                }
+                
+                score += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
+                         (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
+                max += 1;
+
+                score /= max;
+                
+                scored.Add(new KeyValuePair<float, Song>( score, song ));
+
+            }
+
+            return scored;
+        }
+
+        public static string SafeFileName(string oldName)
+        {
+            return Regex.Replace(oldName, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
         }
 
     }

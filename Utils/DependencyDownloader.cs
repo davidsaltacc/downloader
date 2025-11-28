@@ -49,14 +49,14 @@ namespace Downloader.Utils
             Directory.Delete("./ffmpeg-master-latest-win64-lgpl-shared", true);
         }
         
-        public static async Task<bool> EnsureLatestQjsInstalled()
+        public static async Task<bool> EnsureLatestDenoInstalled()
         {
             try
             {
                 using var process = Process.Start(new ProcessStartInfo
                 {
-                    FileName = "qjs.exe",
-                    Arguments = "--help",
+                    FileName = "deno.exe",
+                    Arguments = "-v",
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
@@ -68,21 +68,29 @@ namespace Downloader.Utils
                 
                 var version = (await process.StandardOutput.ReadLineAsync() ?? "").Split(" ").LastOrDefault("");
                 await process.WaitForExitAsync();
+
+                var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = new Uri("https://api.github.com/repos/denoland/deno/releases/latest"),
+                    Headers =
+                    {
+                        { "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3" }
+                    }
+                });
+                var latest = JsonNode.Parse(await response.Content.ReadAsStringAsync())?["tag_name"]?.ToString();
                 
-                var latest = JsonNode.Parse(await (await MainWindow.HttpClient.GetAsync("https://bellard.org/quickjs/binary_releases/LATEST.json")).Content.ReadAsStringAsync())?["version"]?.ToString();
-                
-                return version == latest;
+                return version == latest?.Replace("v", "");
             }
             catch (System.ComponentModel.Win32Exception) {
                 return false;
             }
         }
 
-        public static async Task DownloadLatestQjs()
+        public static async Task DownloadLatestDeno()
         {
-            var latest = JsonNode.Parse(await (await MainWindow.HttpClient.GetAsync("https://bellard.org/quickjs/binary_releases/LATEST.json")).Content.ReadAsStringAsync())?["version"]?.ToString();
-            var file = await Utils.DownloadFile("https://bellard.org/quickjs/binary_releases/quickjs-win-x86_64-" + latest + ".zip", ".");
-            Utils.ExtractAllFilesFromZipArchive("quickjs-win-x86_64-" + latest + ".zip", ".", true);
+            var file = await Utils.DownloadFile("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", ".");
+            Utils.ExtractFileFromZipArchive(file, "deno.exe", ".");
             File.Delete(file);
         }
         

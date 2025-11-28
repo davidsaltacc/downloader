@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Downloader.Api.Apis;
 using Downloader.Utils.Songs;
 
-namespace Downloader.Api.Apis;
+namespace Downloader.Api;
 
 public interface ISongAudioSource : ISongApi
 {

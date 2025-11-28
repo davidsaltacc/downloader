@@ -12,11 +12,10 @@ namespace Downloader.Utils
     internal abstract class YtDlpApi
     {
 
-        public static async Task<string> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
+        public static async Task<string> DownloadSong(Song song, string folder, Action<int> onProgressUpdate, string? uniqueSongIdentifier)
         {
-
-            // TODO if we wanna support other platforms beside yt, adjust file naming
-            var fullFilePath = Path.Join(folder, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v") + "." + Settings.AllCodecsAndFormats[Settings.Codec]).Replace("\\", "/");
+            
+            var fullFilePath = Path.Join(folder, (uniqueSongIdentifier != null ? Utils.SafeFileName(uniqueSongIdentifier) : Utils.SafeFileName(String.Join(", ", song.Artists) + " - " + song.Title))).Replace("\\", "/");
 
             var process = new Process
             {
@@ -24,7 +23,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --no-js-runtimes --js-runtimes quickjs --no-part --newline --progress -o \"{fullFilePath}\" --progress -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.SongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" --progress -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.SongUrl}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -51,7 +50,7 @@ namespace Downloader.Utils
 
             await process.WaitForExitAsync();
 
-            return fullFilePath;
+            return fullFilePath + "." + Settings.AllCodecsAndFormats[Settings.Codec];
 
         }
 

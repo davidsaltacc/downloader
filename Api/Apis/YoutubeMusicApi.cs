@@ -258,7 +258,7 @@ namespace Downloader.Api.Apis
                 artistsNamesClean = artistsNameJoined;
             }
 
-            var results = ScoreFoundSongs((await Task.WhenAll([
+            var results = Utils.Utils.ScoreFoundSongs((await Task.WhenAll([
                 Search(artistsNamesClean + " " + songTitleClean, SearchFor.Songs),
                 Search(artistsNamesClean + " " + songTitleClean, SearchFor.Videos),
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
@@ -275,40 +275,6 @@ namespace Downloader.Api.Apis
             return new Song(songData.Album, songData.Artists, songData.Title, songData.DurationMs, songData.IndexOnDisk,
                     songData.DiskIndex, songData.ReleaseYear, songData.ImageUrl, finalSong.SongUrl, GetId());
 
-        }
-        
-        private List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong)
-        {
-            List<KeyValuePair<float, Song>> scored = [];
-
-            foreach (var song in songs)
-            {
-                
-                var score = 0f;
-                var max = 0f;
-
-                score += FuzzySharp.Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
-                max += 1;
-                
-                score += FuzzySharp.Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
-                max += 0.65f;
-                
-                if (song.DurationMs > 0) {
-                    score += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
-                    max += 1f;
-                }
-                
-                score += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
-                         (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
-                max += 1;
-
-                score /= max;
-                
-                scored.Add(new KeyValuePair<float, Song>( score, song ));
-
-            }
-
-            return scored;
         }
 
         private enum SearchFor {
@@ -557,7 +523,7 @@ namespace Downloader.Api.Apis
 
         public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
         {
-            return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate);
+            return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v"));
         }
         
         public bool UrlPartOfPlatform(string url)

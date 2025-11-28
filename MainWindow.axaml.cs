@@ -11,10 +11,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Interactivity;
+using Downloader.Api;
 using Downloader.Api.Apis;
 
 namespace Downloader
@@ -171,10 +171,10 @@ namespace Downloader
                         SetStatusText("Downloading yt-dlp");
                         await DependencyDownloader.DownloadLatestYtDlp();
                     }
-                    if (!await DependencyDownloader.EnsureLatestQjsInstalled())
+                    if (!await DependencyDownloader.EnsureLatestDenoInstalled())
                     {
-                        SetStatusText("Downloading QuickJS");
-                        await DependencyDownloader.DownloadLatestQjs();
+                        SetStatusText("Downloading Deno");
+                        await DependencyDownloader.DownloadLatestDeno();
                     }
 
                     Logger.Log("Initializing APIs");
@@ -302,7 +302,7 @@ namespace Downloader
             }
 
             var newFilename = String.Join(", ", found.Artists) + " - " + found.Title + "." + downloaded.Split(".").Last();
-            newFilename = "./downloaded/" + Regex.Replace(newFilename, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
+            newFilename = "./downloaded/" + Utils.Utils.SafeFileName(newFilename);
             int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
             {
