@@ -1,4 +1,4 @@
-﻿using Downloader.Utils.Songs;
+﻿using Downloader.Utils;
 using System;
 using System.Diagnostics;
 using System.Globalization;

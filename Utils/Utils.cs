@@ -9,7 +9,7 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Downloader.Utils.Songs;
+using Downloader.Utils;
 using SharpCompress.Archives.Zip;
 using TagLib;
 using TagLib.Id3v2;

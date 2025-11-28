@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Downloader.Api.Apis;
-using Downloader.Utils.Songs;
+using Downloader.Utils;
 
 namespace Downloader.Api;
 

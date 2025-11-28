@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using Downloader.Utils.Songs;
 using Downloader.Utils;
 using System;
 using System.Collections.Concurrent;

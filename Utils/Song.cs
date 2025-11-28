@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace Downloader.Utils.Songs
+namespace Downloader.Utils
 {
     public class Song(
         string album,
