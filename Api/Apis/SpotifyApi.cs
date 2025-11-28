@@ -156,7 +156,7 @@ namespace Downloader.Api.Apis
             public required Track[] tracks { get; set; }
         }
 
-        public async Task<Song[]> GetSongsFromURLs(string[] urls)
+        public async Task<Song[]> GetSongsFromUrls(string[] urls)
         {
 
             var ids = new string?[urls.Length];
@@ -190,8 +190,14 @@ namespace Downloader.Api.Apis
 
             foreach (var batch in batches)
             {
-                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(await (await SendApiRequest("/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("ids", String.Join(",", batch))]))).Content.ReadAsStringAsync())?.tracks ?? []);
-                // TODO if error here - more specifically, "HTTP 400 - invalid base62 id" - then the song/album/playlist doesnt exist
+                var response = await SendApiRequest("/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("ids", String.Join(",", batch))]));
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode == HttpStatusCode.BadRequest &&
+                    content.Contains("base62", StringComparison.InvariantCultureIgnoreCase)) // song does not exist
+                {
+                    continue;
+                }
+                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(content)?.tracks ?? []);
             }
 
             var songs = new Song[allTracks.Count];
@@ -237,7 +243,7 @@ namespace Downloader.Api.Apis
             List<string> urls = [];
 
             await Request(0);
-            return await GetSongsFromURLs(urls.ToArray());
+            return await GetSongsFromUrls(urls.ToArray());
 
             async Task Request(int offset)
             {
@@ -281,7 +287,7 @@ namespace Downloader.Api.Apis
 
             await Request(0);
 
-            return await GetSongsFromURLs(urls.ToArray());
+            return await GetSongsFromUrls(urls.ToArray());
 
             async Task Request(int offset)
             {
@@ -304,7 +310,7 @@ namespace Downloader.Api.Apis
             var uri = new Uri(url);
             if (uri.AbsolutePath.StartsWith("/track"))
             {
-                return await GetSongsFromURLs([ url ]);
+                return await GetSongsFromUrls([ url ]);
             } 
             if (uri.AbsolutePath.StartsWith("/album"))
             {
