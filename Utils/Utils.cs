@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Downloader.Utils;
 using SharpCompress.Archives.Zip;
 using TagLib;
 using TagLib.Id3v2;
@@ -167,29 +166,35 @@ namespace Downloader.Utils
             foreach (var song in songs)
             {
                 
-                var score = 0f;
-                var max = 0f;
+                var scoreBasic = 0f;
+                var maxBasic = 0f;
+                var scoreOverlap = 0f;
+                var maxOverlap = 0f;
 
-                score += FuzzySharp.Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
-                max += 1;
+                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
+                maxBasic += 1;
                 
-                score += FuzzySharp.Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
-                max += 0.65f;
+                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
+                maxBasic += 0.65f;
                 
                 if (song.DurationMs > 0) {
-                    score += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
-                    max += 1f;
+                    scoreBasic += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
+                    maxBasic += 1f;
                 }
                 
-                score += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
+                scoreBasic += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
                          (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
-                max += 1;
-                
-                // TODO if allowTitleArtistOverlap, take the basic scoring we already have, and scoring strings like "ARTIST TITLE", choose the max (for each artist-title string) and then choose the max (basic scoring - new scoring) - or something like that idk
+                maxBasic += 1;
 
-                score /= max;
+                scoreOverlap += FuzzySharp.Fuzz.TokenSortRatio(String.Join(" ", song.Artists) + " " + song.Title, String.Join(" ", originalSong.Artists) + " " + originalSong.Title);
+                maxOverlap += 1;
+
+                scoreBasic /= maxBasic;
+                scoreOverlap /= maxOverlap;
+
+                var finalScore = allowTitleArtistOverlap ? (scoreOverlap * 0.3f + scoreBasic * 0.2f) : scoreBasic;
                 
-                scored.Add(new KeyValuePair<float, Song>( score, song ));
+                scored.Add(new KeyValuePair<float, Song>( finalScore, song ));
 
             }
 
