@@ -10,7 +10,7 @@ using SoftCircuits.HtmlMonkey;
 
 namespace Downloader.Api.Apis;
 
-public class SoundCloudApi : ISongAudioSource
+public class SoundCloudApi : ISongAudioSource, ISongDataSource
 {
     
     private static SoundCloudApi? _instance = null;
@@ -196,5 +196,43 @@ public class SoundCloudApi : ISongAudioSource
     public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
     {
         return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate, new Uri(song.SongUrl).AbsolutePath);
+    }
+
+    public async Task<Song[]> GetSongs(string url)
+    {
+        
+        var segments = new Uri(url).AbsolutePath.Split("/");
+        if (segments[1] == "sets")
+        {
+            string uploader = segments[0];
+            string id = segments[2];
+
+            // TODO see if the api tells you if its an album, in that case adding track numbers is possible 
+            if (false/* is album */)
+            {
+                // get as album
+            }
+            else
+            {
+                // get as playlist
+            }
+        }
+        else
+        {
+            string uploader = segments[0];
+            string id = segments[2];
+
+            var song = ParseSong(JsonNode.Parse(await (await SendApiRequest("track/" + id, new Dictionary<string, string>())).Content.ReadAsStringAsync()));
+            if (song != null)
+            {
+                return [ song ];
+            }
+        }
+        return [];
+    }
+
+    public bool UrlPartOfPlatform(string url)
+    {
+        return new Uri(url).Host.Contains("soundcloud", StringComparison.OrdinalIgnoreCase);
     }
 }
