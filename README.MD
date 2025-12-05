@@ -4,6 +4,8 @@ A tool to download songs, playlists and albums from various platforms.
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
 
+Note: Not a single line of code was written by AI. #fuckvibecoding  
+
 ## Disclaimer
 
 This is for educational purposes exclusively. I do not encourage piracy or any illegal distribution or downloading of songs and other media from platforms such as YouTube Music, Spotify and all other platforms supported by this app. 
@@ -40,4 +42,6 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - More Platforms to download from
 - Different playlist formats
 - Configurable Quality instead of best (downloading and saving)
+- Support for other platforms?
+- Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
 - ... more?
