@@ -178,7 +178,7 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
         
         foreach (var song in results ?? [])
         {
-            if (song?["monetization_model"]?.ToString() != "BLACKBOX")
+            if (song?["monetization_model"]?.ToString().StartsWith("SUB_", StringComparison.InvariantCultureIgnoreCase) ?? true)
             {
                 continue;
             }
@@ -202,27 +202,95 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
     {
         
         var segments = new Uri(url).AbsolutePath.Split("/");
-        if (segments[1] == "sets")
+        if (segments[2] == "sets")
         {
-            string uploader = segments[0];
-            string id = segments[2];
+            var response = await SendApiRequest("resolve", new Dictionary<string, string>
+            {
+                { "url", url }
+            });
+            var content = await response.Content.ReadAsStringAsync();
+            var playlistData = JsonNode.Parse(content);
+            var isAlbum = playlistData?["is_album"]?.GetValue<bool>() ?? false;
 
-            // TODO see if the api tells you if its an album, in that case adding track numbers is possible 
-            if (false/* is album */)
+            var allTracks = playlistData?["tracks"]?.AsArray().ToList().FindAll(track => !(track?["monetization_model"]?.ToString().StartsWith("SUB_", StringComparison.InvariantCultureIgnoreCase) ?? true));
+            if (allTracks == null)
             {
-                // get as album
+                return [];
             }
-            else
+            var needsExtending = new List<int>();
+
+            var i = -1;
+            foreach (var track  in allTracks)
             {
-                // get as playlist
+                i++;
+                if (track?["title"] != null)
+                {
+                    continue;
+                }
+                needsExtending.Add(i);
             }
+
+            foreach (var indices in needsExtending.Chunk(50))
+            {
+                var ids = new string[50];
+
+                i = 0;
+                foreach (var index in indices)
+                {
+                    ids[i] = allTracks?[index]?["id"]?.ToString() ?? "-1";
+                    i++;
+                }
+
+                var fullTracksResponse = await SendApiRequest("tracks", new Dictionary<string, string>
+                {
+                    { "ids", String.Join(",", ids) }
+                });
+
+                var fullContent = await fullTracksResponse.Content.ReadAsStringAsync();
+                var extendedSongs = JsonNode.Parse(fullContent)?.AsArray();
+                
+                i = 0;
+                foreach (var fullSong in extendedSongs ?? [])
+                {
+                    allTracks[indices[i]] = fullSong;
+                    i++;
+                }
+
+            }
+
+            List<Song> songs = [];
+
+            i = 0;
+            foreach (var songData in allTracks)
+            {
+                var song = ParseSong(songData);
+                if (song == null)
+                {
+                    continue;
+                }
+
+                if (isAlbum)
+                {
+                    song.IndexOnDisk = i;
+                    song.DiskIndex = 0;
+                }
+
+                songs.Add(song);
+                i++;
+            }
+
+            return songs.ToArray();
+
         }
         else
         {
-            string uploader = segments[0];
-            string id = segments[2];
 
-            var song = ParseSong(JsonNode.Parse(await (await SendApiRequest("track/" + id, new Dictionary<string, string>())).Content.ReadAsStringAsync()));
+            var response = await SendApiRequest("resolve", new Dictionary<string, string>
+            {
+                { "url", url }
+            });
+            var content = await response.Content.ReadAsStringAsync();
+            var song = ParseSong(JsonNode.Parse(content));
             if (song != null)
             {
                 return [ song ];
