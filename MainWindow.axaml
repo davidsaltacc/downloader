@@ -42,14 +42,7 @@
 			    <Border Padding="10">
 				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 					    <StackPanel Margin="10" Orientation="Vertical">
-						    <StackPanel Orientation="Horizontal">
-							    <TextBlock VerticalAlignment="Center">
-								    Codec
-							    </TextBlock>
-							    <Border Margin="10,0,0,0"></Border>
-							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
-						    </StackPanel>
-						    <Border Margin="0,10,0,0"></Border>
+						    
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Concurrent Downloads
@@ -58,6 +51,18 @@
 							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" ShowButtonSpinner="False" x:Name="ThreadSelection"></NumericUpDown>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <Border Margin="0,20,0,0"></Border>
+						    
+						    <StackPanel Orientation="Horizontal">
+							    <TextBlock VerticalAlignment="Center">
+								    Codec
+							    </TextBlock>
+							    <Border Margin="10,0,0,0"></Border>
+							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
+						    </StackPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Audio Source
@@ -66,6 +71,26 @@
 							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="AudioSourceSelectionBox"></ComboBox>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <Border Margin="0,20,0,0"></Border>
+						    
+						    <StackPanel Orientation="Horizontal">
+							    <TextBlock VerticalAlignment="Center">
+								    Create Playlist File
+							    </TextBlock>
+							    <Border Margin="10,0,0,0"></Border>
+							    <CheckBox VerticalAlignment="Center" IsChecked="True" x:Name="CreatePlaylistFileCheckbox"></CheckBox>
+						    </StackPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <!--
+						    
+						    TODO final directory selection
+						    TODO song naming scheme - default "Artists - Title"
+						    TODO playlist file naming - default "! playlist"
+						    
+						    -->
+						    
 					    </StackPanel>
 				    </ScrollViewer>
 			    </Border>

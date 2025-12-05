@@ -39,4 +39,7 @@ public abstract class Settings
     public static string SongAudioSource = YoutubeMusicApi.Instance.GetId();
     public static readonly string DefaultSongAudioSource = YoutubeMusicApi.Instance.GetId();
 
+    public static bool CreatePlaylistFile = true;
+    public static readonly bool DefaultCreatePlaylistFile = true;
+
 }

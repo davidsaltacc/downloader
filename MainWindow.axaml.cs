@@ -69,6 +69,13 @@ namespace Downloader
                 Logger.Log("Selected audio source " + Settings.SongAudioSource);
             };
 
+            CreatePlaylistFileCheckbox.IsChecked = Settings.CreatePlaylistFile;
+            CreatePlaylistFileCheckbox.IsCheckedChanged += (_, __) =>
+            {
+                Settings.CreatePlaylistFile = CreatePlaylistFileCheckbox.IsChecked ?? Settings.DefaultCreatePlaylistFile;
+                Logger.Log("Set create playlist file to " + Settings.CreatePlaylistFile);
+            };
+            
         }
 
         private void SetThreadCount(int count)
@@ -247,16 +254,24 @@ namespace Downloader
 
                     List<string?> newFilenames = [.. await Task.WhenAll(tasks)];
 
-                    Logger.Log("Writing playlist to file");
-                    SetStatusText("Writing playlist");
-
-                    var playlist = "#EXTM3U";
-                    foreach (var name in newFilenames)
+                    if (Settings.CreatePlaylistFile && songs.Length > 1)
                     {
-                        playlist += "\n" + Path.GetFileName(name);
-                    }
 
-                    await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
+                        Logger.Log("Writing playlist to file");
+                        SetStatusText("Writing playlist");
+
+                        var playlist = "#EXTM3U";
+                        foreach (var name in newFilenames)
+                        {
+                            playlist += "\n" + Path.GetFileName(name);
+                        }
+
+                        await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
+                    }
+                    else if (Settings.CreatePlaylistFile)
+                    {
+                        Logger.Log("Skipping playlist creation due to playlist only containing single song");
+                    }
 
                     SetStatusText("Done");
                     Logger.Log("Finished download");
