@@ -23,7 +23,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" --progress -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.SongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" -x -f \"ba/b\" --postprocessor-args \"-compression_level 12\" --audio-quality 0 --audio-format {Settings.Codec} {song.SongUrl}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
