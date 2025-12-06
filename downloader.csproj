@@ -8,6 +8,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 	<SelfContained>true</SelfContained>
 	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	<ApplicationIcon>icons/icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,4 +25,24 @@
     <PackageReference Include="SoftCircuits.HtmlMonkey" Version="3.1.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="src\MainWindow.axaml.cs">
+      <DependentUpon>MainWindow.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="src\App.axaml.cs">
+      <DependentUpon>App.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <Target Name="MakeInstaller" AfterTargets="Publish">
+	<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File post_build.ps1 publish $(PublishDir)" WorkingDirectory="." />
+  </Target>
+  
+  <Target Name="PostBuild" AfterTargets="Build">
+	<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File post_build.ps1 build $(TargetDir)" WorkingDirectory="." />
+  </Target>
+  
 </Project>

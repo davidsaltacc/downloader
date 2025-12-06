@@ -1,0 +1,4 @@
+name=Downloader
+installdir=MusicDownloader
+exename=downloader
+version=0.1
