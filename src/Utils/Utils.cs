@@ -60,10 +60,13 @@ namespace Downloader.Utils
                 }
 
                 var extractDir = Path.GetDirectoryName(extractFolder);
-                if (extractDir != null && extractDir.Length > 0) {
+                if (extractDir != null && extractDir.Length > 0)
+                {
                     Directory.CreateDirectory(extractDir);
                 }
-                entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(targetFile)), new ExtractionOptions { Overwrite = true, ExtractFullPath = false });
+
+                entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(targetFile)),
+                    new ExtractionOptions { Overwrite = true, ExtractFullPath = false });
                 break;
             }
         }
@@ -80,13 +83,20 @@ namespace Downloader.Utils
                 try
                 {
                     Directory.CreateDirectory(extractFolder);
-                } catch (IOException _) {}
+                }
+                catch (IOException _)
+                {
+                }
 
                 if (flat)
                 {
-                    entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(entry.Key)), new ExtractionOptions { Overwrite = true });
-                } else {
-                    entry.WriteToDirectory(extractFolder, new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
+                    entry.WriteToFile(Path.Combine(extractFolder, Path.GetFileName(entry.Key)),
+                        new ExtractionOptions { Overwrite = true });
+                }
+                else
+                {
+                    entry.WriteToDirectory(extractFolder,
+                        new ExtractionOptions { Overwrite = true, ExtractFullPath = true });
                 }
             }
         }
@@ -96,33 +106,42 @@ namespace Downloader.Utils
 
             Tag.DefaultVersion = 3;
             Tag.ForceDefaultVersion = true;
-            var taggedFile = TagLib.File.Create(file, Settings.AllCodecsAndMimetypes[Settings.AllCodecsAndFormats.Keys.First(s => Settings.AllCodecsAndFormats[s] == file.Split(".").Last())], ReadStyle.Average);
+            var taggedFile = TagLib.File.Create(file,
+                Settings.AllCodecsAndMimetypes[
+                    Settings.AllCodecsAndFormats.Keys.First(s =>
+                        Settings.AllCodecsAndFormats[s] == file.Split(".").Last())], ReadStyle.Average);
 
             if (song.Title.Length > 0)
             {
                 taggedFile.Tag.Title = song.Title;
             }
+
             if (song.Album.Length > 0)
             {
                 taggedFile.Tag.Album = song.Album;
             }
+
             if (String.Join("", song.Artists).Length > 0)
             {
                 taggedFile.Tag.Performers = song.Artists;
             }
+
             taggedFile.Tag.Comment = comment;
             if (song.IndexOnDisk != -1)
             {
-                taggedFile.Tag.Track = (uint) song.IndexOnDisk;
+                taggedFile.Tag.Track = (uint)song.IndexOnDisk;
             }
+
             if (song.DiskIndex != -1)
             {
-                taggedFile.Tag.Disc = (uint) song.DiskIndex;
+                taggedFile.Tag.Disc = (uint)song.DiskIndex;
             }
+
             if (song.ReleaseYear != -1)
             {
-                taggedFile.Tag.Year = (uint) song.ReleaseYear;
+                taggedFile.Tag.Year = (uint)song.ReleaseYear;
             }
+
             if (song.ImageUrl.Length > 0)
             {
                 byte[] imageBytes;
@@ -145,48 +164,55 @@ namespace Downloader.Utils
             taggedFile.Save();
 
         }
-        
+
         public static JsonNode? NavigateJsonNode(JsonNode? node, params object[] path)
         {
-            foreach (var key in path) {
+            foreach (var key in path)
+            {
                 node = key switch
                 {
                     string s => node?[s],
                     int i => i == -1 ? node?.AsArray().Last() : node?.AsArray()[i],
-                _ => null
+                    _ => null
                 };
             }
+
             return node;
         }
-        
-        public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong, bool allowTitleArtistOverlap)
+
+        public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong,
+            bool allowTitleArtistOverlap)
         {
             List<KeyValuePair<float, Song>> scored = [];
 
             foreach (var song in songs)
             {
-                
+
                 var scoreBasic = 0f;
                 var maxBasic = 0f;
                 var scoreOverlap = 0f;
                 var maxOverlap = 0f;
 
-                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Title, [ song.Title ], s => s).Score / 100f;
+                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Title, [song.Title], s => s).Score / 100f;
                 maxBasic += 1;
-                
-                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [ song.Album ], s => s).Score / 100f * 0.65f;
+
+                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [song.Album], s => s).Score / 100f *
+                              0.65f;
                 maxBasic += 0.65f;
-                
-                if (song.DurationMs > 0) {
+
+                if (song.DurationMs > 0)
+                {
                     scoreBasic += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
                     maxBasic += 1f;
                 }
-                
-                scoreBasic += song.Artists.Select(artist => FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
-                         (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
+
+                scoreBasic += song.Artists.Select(artist =>
+                                  FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
+                              (float)Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
                 maxBasic += 1;
 
-                scoreOverlap += FuzzySharp.Fuzz.TokenSortRatio(String.Join(" ", song.Artists) + " " + song.Title, String.Join(" ", originalSong.Artists) + " " + originalSong.Title);
+                scoreOverlap += FuzzySharp.Fuzz.TokenSortRatio(String.Join(" ", song.Artists) + " " + song.Title,
+                    String.Join(" ", originalSong.Artists) + " " + originalSong.Title);
                 maxOverlap += 1;
 
                 scoreBasic /= maxBasic;
@@ -206,5 +232,25 @@ namespace Downloader.Utils
             return Regex.Replace(oldName, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
         }
 
+        public static string ReplaceSubstitutions(string baseString, Song song)
+        {
+            
+            var replacements = new Dictionary<string, string>
+            {
+                { "artist", song.Artists[0] },
+                { "allartists", String.Join(", ", song.Artists) },
+                { "title", song.Title },
+                { "album", song.Album },
+                { "year", song.ReleaseYear.ToString() }
+            };
+            
+            return Regex.Replace(baseString, @"%(?:[^%]|%%)+%", match =>
+            {
+                var content = match.Value.Substring(1, match.Value.Length - 1);
+                content = content.Replace("%%", "%");
+                return replacements.GetValueOrDefault(content, content);
+            });
+        }
     }
+    
 }
