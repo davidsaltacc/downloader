@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         xmlns:local="using:Downloader"
         mc:Ignorable="d" 
         d:DesignWidth="400" d:DesignHeight="300"
@@ -27,8 +28,10 @@
 		        <Border Padding="10">
 	            	<StackPanel>
 		        	    <TextBox Watermark="Input URL" x:Name="DownloadUrlBox"></TextBox>
+			            <Border Margin="0,5,0,0"></Border>
 			            <StackPanel Orientation="Horizontal">
 				            <Button Click="StartDownload_Click" IsEnabled="{Binding !isBusy}">Start Downloading</Button>
+				            <Border Margin="5,0,0,0"></Border>
 				            <Button Click="CancelDownload_Click" IsEnabled="{Binding isBusy}">Cancel</Button>
 			            </StackPanel>
 			            <TextBlock x:Name="StatusText"></TextBlock>
@@ -38,7 +41,7 @@
 	            	</StackPanel>
 		        </Border>
 		    </TabItem>
-		    <TabItem Header="Settings">
+		    <TabItem Header="Settings - Downloading">
 			    <Border Padding="10">
 				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 					    <StackPanel Margin="10" Orientation="Vertical">
@@ -51,8 +54,6 @@
 							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" ShowButtonSpinner="False" x:Name="ThreadSelection"></NumericUpDown>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
-						    
-						    <Border Margin="0,20,0,0"></Border>
 						    
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
@@ -72,7 +73,14 @@
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
-						    <Border Margin="0,20,0,0"></Border>
+					    </StackPanel>
+				    </ScrollViewer>
+			    </Border>
+		    </TabItem>
+		    <TabItem Header="Settings - Files">
+			    <Border Padding="10">
+				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+					    <StackPanel Margin="10" Orientation="Vertical">
 						    
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
@@ -83,9 +91,25 @@
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
+						    
+						    <DockPanel LastChildFill="True">
+							    
+							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
+									Destination Folder
+							    </TextBlock>
+							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
+							    <Button DockPanel.Dock="Left" i:Attached.Icon="mdi-folder-outline" FontSize="20" VerticalAlignment="Center" x:Name="DestinationFolderSelectButton"></Button>
+							    <Border DockPanel.Dock="Left" Margin="4,0,0,0"></Border>
+							    
+							    <TextBox VerticalAlignment="Center" x:Name="DestinationFolderTextBox"></TextBox>
+							    
+						    </DockPanel>
+						    
 						    <!--
 						    
-						    TODO final directory selection
+						    TODO actually save to destination folder
+						    
+						    TODO subfolder - default "/%artist%/%album%/" 
 						    TODO song naming scheme - default "Artists - Title"
 						    TODO playlist file naming - default "! playlist"
 						    

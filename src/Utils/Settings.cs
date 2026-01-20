@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Downloader.Api;
 using Downloader.Api.Apis;
 
@@ -41,5 +42,8 @@ public abstract class Settings
 
     public static bool CreatePlaylistFile = true;
     public static readonly bool DefaultCreatePlaylistFile = true;
+    
+    // do NOT save with other settings
+    public static string DestinationFolder = "C:/Users/" + Environment.UserName + "/Music"; 
 
 }

@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Downloader.Api;
 using Downloader.Api.Apis;
 
@@ -75,7 +76,39 @@ namespace Downloader
                 Settings.CreatePlaylistFile = CreatePlaylistFileCheckbox.IsChecked ?? Settings.DefaultCreatePlaylistFile;
                 Logger.Log("Set create playlist file to " + Settings.CreatePlaylistFile);
             };
+
+            DestinationFolderTextBox.Text = Settings.DestinationFolder;
+            DestinationFolderTextBox.TextChanged += (_, __) =>
+            {
+                Settings.DestinationFolder = DestinationFolderTextBox.Text ?? "";
+                Logger.Log("Set destination folder to " + Settings.DestinationFolder);
+            };
             
+            DestinationFolderSelectButton.Click += async (_, __) =>
+            {
+                var topLevel = GetTopLevel(this);
+
+                if (topLevel == null)
+                {
+                    return;
+                }
+
+                var files = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions()
+                {
+                    Title = "Select Destination Folder",
+                    AllowMultiple = false,
+                    SuggestedStartLocation = await topLevel.StorageProvider.TryGetWellKnownFolderAsync(WellKnownFolder.Music)
+                });
+
+                if (files.Count <= 0)
+                {
+                    return;
+                }
+
+                Settings.DestinationFolder = DestinationFolderTextBox.Text = files[0].Path.AbsolutePath;
+
+            };
+
         }
 
         private void SetThreadCount(int count)

@@ -16,7 +16,7 @@ public abstract class Logger
             return;
         }
         _logWriter = new StreamWriter(
-            new FileStream(Path.Join(Path.GetTempPath(), "downloader_" + DateTime.Now.ToString("yyyy:MM:dd_HH:mm:ss") + ".log"), FileMode.Create, FileAccess.Write, FileShare.Read))
+            new FileStream(Path.Join(Path.GetTempPath(), "downloader_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".log"), FileMode.Create, FileAccess.Write, FileShare.Read))
         {
             AutoFlush = true
         };
