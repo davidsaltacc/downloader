@@ -31,6 +31,14 @@
 	        <Setter Property="Background" Value="#5f303030" />
 	        <Setter Property="BorderBrush" Value="#8fffffff" />
         </Style>
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+	        <Setter Property="Background" Value="#404040" />
+	        <Setter Property="BorderBrush" Value="#8fffffff" />
+        </Style>
+        
+        <Style Selector="TextBox">
+	        <Setter Property="SelectionBrush" Value="#ff5f5f5f" />
+        </Style>
 
         <Style Selector=":is(TopLevel)">
 			<Setter Property="FontFamily" Value="" />

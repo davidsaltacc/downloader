@@ -119,7 +119,7 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
                 artistsNamesClean = artistsNameJoined;
             }
 
-            var results = Utils.Utils.ScoreFoundSongs((await Task.WhenAll([
+            var results = Helpers.ScoreFoundSongs((await Task.WhenAll([
                 Search(artistsNamesClean + " " + songTitleClean),
                 Search(artistsNamesClean + " " + songTitleClean),
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean),

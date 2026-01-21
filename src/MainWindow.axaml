@@ -5,9 +5,9 @@
         xmlns:i="https://github.com/projektanker/icons.avalonia"
         xmlns:local="using:Downloader"
         mc:Ignorable="d" 
-        d:DesignWidth="400" d:DesignHeight="300"
-        MinWidth="400" MinHeight="300"
-        Width="400" Height="300"
+        d:DesignWidth="600" d:DesignHeight="450"
+        MinWidth="600" MinHeight="450"
+        Width="600" Height="450"
         x:Class="Downloader.MainWindow"
         x:DataType="local:MainWindow"
         Title="downloader"
@@ -27,7 +27,7 @@
 		    <TabItem Header="Downloading">
 		        <Border Padding="10">
 	            	<StackPanel>
-		        	    <TextBox Watermark="Input URL" x:Name="DownloadUrlBox"></TextBox>
+		        	    <TextBox Watermark="Input URL" x:Name="DownloadUrlBox" IsEnabled="{Binding !isBusy}"></TextBox>
 			            <Border Margin="0,5,0,0"></Border>
 			            <StackPanel Orientation="Horizontal">
 				            <Button Click="StartDownload_Click" IsEnabled="{Binding !isBusy}">Start Downloading</Button>
@@ -45,31 +45,38 @@
 			    <Border Padding="10">
 				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 					    <StackPanel Margin="10" Orientation="Vertical">
-						    
+						
+						    <TextBlock TextWrapping="Wrap" FontSize="12">How many songs should get downloaded in parallel.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Concurrent Downloads
 							    </TextBlock>
 							    <Border Margin="10,0,0,0"></Border>
-							    <NumericUpDown VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" ShowButtonSpinner="False" x:Name="ThreadSelection"></NumericUpDown>
+							    <NumericUpDown IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" Increment="1" Maximum="15" Minimum="1" ShowButtonSpinner="False" x:Name="ThreadSelection"></NumericUpDown>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">What codec (and file format) songs should be saved as. Leave at mp3 if you are unsure what this does.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Codec
 							    </TextBlock>
 							    <Border Margin="10,0,0,0"></Border>
-							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
+							    <ComboBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="CodecSelectionBox"></ComboBox>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">Where the song audio actually gets downloaded from. Use Youtube Music if unsure.</TextBlock>
+						    <!-- TODO if we add a high-quality source, add in the description -->
+						    <Border Margin="0,5,0,0"></Border>
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Audio Source
 							    </TextBlock>
 							    <Border Margin="10,0,0,0"></Border>
-							    <ComboBox VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="AudioSourceSelectionBox"></ComboBox>
+							    <ComboBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" SelectedIndex="0" MaxDropDownHeight="150" x:Name="AudioSourceSelectionBox"></ComboBox>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
@@ -82,38 +89,73 @@
 				    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 					    <StackPanel Margin="10" Orientation="Vertical">
 						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">Create a file that can be opened with media players such as VLC that will automatically play the songs in the album or playlist in original order.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
 						    <StackPanel Orientation="Horizontal">
 							    <TextBlock VerticalAlignment="Center">
 								    Create Playlist File
 							    </TextBlock>
 							    <Border Margin="10,0,0,0"></Border>
-							    <CheckBox VerticalAlignment="Center" IsChecked="True" x:Name="CreatePlaylistFileCheckbox"></CheckBox>
+							    <CheckBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" IsChecked="True" x:Name="CreatePlaylistFileCheckbox"></CheckBox>
 						    </StackPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
-						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The name for the playlist file. Prefixing with an exclamation mark can be useful as it appears at the very top when sorting files by name.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
 						    <DockPanel LastChildFill="True">
+							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
+								    Playlist File Name
+							    </TextBlock>
+							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
 							    
+							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="PlaylistFileNameTextBox"></TextBox>
+						    </DockPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The name for each individual song file. Supports Substitutions (read more below).</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
+						    <DockPanel LastChildFill="True">
+							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
+								    Song Filename
+							    </TextBlock>
+							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
+							    
+							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="SongFileNameTextBox"></TextBox>
+						    </DockPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The destination folder that the songs get saved to. Do not include Artists or Album names in the path, the Subfolder option below will do that automatically.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
+						    <DockPanel LastChildFill="True">
 							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
 									Destination Folder
 							    </TextBlock>
 							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
-							    <Button DockPanel.Dock="Left" i:Attached.Icon="mdi-folder-outline" FontSize="20" VerticalAlignment="Center" x:Name="DestinationFolderSelectButton"></Button>
+							    <Button DockPanel.Dock="Left" IsEnabled="{Binding !isBusy}" i:Attached.Icon="mdi-folder-outline" FontSize="20" VerticalAlignment="Center" x:Name="DestinationFolderSelectButton"></Button>
 							    <Border DockPanel.Dock="Left" Margin="4,0,0,0"></Border>
 							    
-							    <TextBox VerticalAlignment="Center" x:Name="DestinationFolderTextBox"></TextBox>
+							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="DestinationFolderTextBox"></TextBox>
+						    </DockPanel>
+						    <Border Margin="0,10,0,0"></Border>
+						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The folder structure created inside the destination folder. Useful for automatic artist/album sorting. Supports Substitutions (read more below).</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
+						    <DockPanel LastChildFill="True">
+							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
+								    Subfolder
+							    </TextBlock>
+							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
 							    
+							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="DestinationSubfolderTextBox"></TextBox>
 						    </DockPanel>
 						    
-						    <!--
-						    
-						    TODO actually save to destination folder
-						    
-						    TODO subfolder - default "/%artist%/%album%/" 
-						    TODO song naming scheme - default "Artists - Title"
-						    TODO playlist file naming - default "! playlist"
-						    
-						    -->
+						    <Border Margin="0,20,0,0"></Border>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">Substitutions are placeholders for song/album/artist metadata that can be used, for example %artist% later gets replaced with the actual artist's name. All supported substitutions:</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%artist% - The first (and usually main) artist of the album/song.</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%allartists% - All artists of the album/song, separated by commas.</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%title% - The title of the song.</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%album% - The name of the album.</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%year% - The release year of the song/album.</TextBlock>
 						    
 					    </StackPanel>
 				    </ScrollViewer>

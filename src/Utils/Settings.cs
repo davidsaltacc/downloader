@@ -16,7 +16,7 @@ public abstract class Settings
         { "mp3", "mp3" },
         { "opus", "opus" },
         { "vorbis", "ogg" },
-        { "wav", "wav" },
+        { "wav", "wav" }
     };
     
     public static readonly Dictionary<string, string> AllCodecsAndMimetypes = new Dictionary<string, string>{
@@ -26,7 +26,7 @@ public abstract class Settings
         { "mp3", "audio/mpeg" },
         { "opus", "audio/opus" },
         { "vorbis", "audio/ogg" },
-        { "wav", "audio/wav" },
+        { "wav", "audio/wav" }
     };
 
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());
@@ -43,7 +43,16 @@ public abstract class Settings
     public static bool CreatePlaylistFile = true;
     public static readonly bool DefaultCreatePlaylistFile = true;
     
-    // do NOT save with other settings
-    public static string DestinationFolder = "C:/Users/" + Environment.UserName + "/Music"; 
+    public static string PlaylistFileName = "! playlist";
+    public static readonly string DefaultPlaylistFileName = "! playlist";
+    
+    public static string SongFileName = "%allartists% - %title%";
+    public static readonly string DefaultSongFileName = "%allartists% - %title%";
+    
+    public static string DestinationFolder = "C:/Users/" + Environment.UserName + "/Music";
+    public static readonly string DefaultDestinationFolder = "C:/Users/" + Environment.UserName + "/Music";
+    
+    public static string DestinationSubfolder = "%artist%/%album%";
+    public static readonly string DefaultDestinationSubfolder = "%artist%/%album%";
 
 }

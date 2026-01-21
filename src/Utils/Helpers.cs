@@ -17,7 +17,7 @@ using Tag = TagLib.Id3v2.Tag;
 
 namespace Downloader.Utils
 {
-    internal abstract class Utils
+    internal abstract class Helpers
     {
 
         public static async Task<string> DownloadFile(string url, string folder)
@@ -232,23 +232,23 @@ namespace Downloader.Utils
             return Regex.Replace(oldName, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
         }
 
-        public static string ReplaceSubstitutions(string baseString, Song song)
+        public static string InsertSubstitutionsForPath(string baseString, Song song)
         {
             
             var replacements = new Dictionary<string, string>
             {
-                { "artist", song.Artists[0] },
-                { "allartists", String.Join(", ", song.Artists) },
-                { "title", song.Title },
-                { "album", song.Album },
-                { "year", song.ReleaseYear.ToString() }
+                { "artist", (song.Artists.Length == 0 || song.Artists[0].Length == 0) ? "Unknown Artist" : song.Artists[0] },
+                { "allartists", (song.Artists.Length == 0 || song.Artists[0].Length == 0) ? "Unknown Artist" : String.Join(", ", song.Artists) },
+                { "title", song.Title.Length == 0 ? "Unknown Title" : song.Title },
+                { "album", song.Album.Length == 0 ? "Unknown Album" : song.Album },
+                { "year", song.ReleaseYear == -1 ? "Unknown Year" : song.ReleaseYear.ToString() }
             };
             
             return Regex.Replace(baseString, @"%(?:[^%]|%%)+%", match =>
             {
-                var content = match.Value.Substring(1, match.Value.Length - 1);
+                var content = match.Value.Substring(1, match.Value.Length - 2);
                 content = content.Replace("%%", "%");
-                return replacements.GetValueOrDefault(content, content);
+                return SafeFileName(replacements.GetValueOrDefault(content, content));
             });
         }
     }

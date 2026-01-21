@@ -39,6 +39,14 @@
     </Compile>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="assets\**" />
+  </ItemGroup>
+  
+  <Target Name="PreBuild" BeforeTargets="Build">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File pre_build.ps1 build $(TargetDir)" WorkingDirectory="." />
+  </Target>
+
   <Target Name="MakeInstaller" AfterTargets="Publish">
 	<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File post_build.ps1 publish $(PublishDir)" WorkingDirectory="." />
   </Target>

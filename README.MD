@@ -4,7 +4,7 @@ A tool to download songs, playlists and albums from various platforms.
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
 
-Note: Not a single line of code was written by AI. #fuckvibecoding  
+Note: Not a single line of code was written by AI. (Except for some of the regex stuff. Writing some elvish runes is one of the few things it can be useful for) #fuckvibecoding 
 
 ## Disclaimer
 

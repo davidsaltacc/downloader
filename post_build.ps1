@@ -31,12 +31,6 @@ if ($isPublish) {
 
 }
 
-if ($buildTarget) {
-
-    Copy-Item "icons\icon.ico" -Destination "$buildTarget"
-
-}
-
 if ($isPublish) {
 
     # make portable

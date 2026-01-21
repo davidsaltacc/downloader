@@ -76,7 +76,7 @@ namespace Downloader.Api.Apis
             }
 
             var content = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-            var items = Utils.Utils.NavigateJsonNode(
+            var items = Helpers.NavigateJsonNode(
                 content,
                 "contents", "singleColumnMusicWatchNextResultsRenderer", "tabbedRenderer", 
                 "watchNextTabbedResultsRenderer", "tabs", 0, "tabRenderer", "content", "musicQueueRenderer", "content",
@@ -105,7 +105,7 @@ namespace Downloader.Api.Apis
 
         private JsonArray? GetSongsFromAlbumData(JsonNode? albumData)
         {
-            return Utils.Utils.NavigateJsonNode(
+            return Helpers.NavigateJsonNode(
                 albumData,
                 "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", "sectionListRenderer",
                 "contents", 0, "musicShelfRenderer", "contents"
@@ -148,13 +148,13 @@ namespace Downloader.Api.Apis
             var albumContent = skipQueryingAlbum ? null : JsonNode.Parse(await (albumData?.Content.ReadAsStringAsync() ?? Task.Run(() => "{}")));
             var songsData = skipQueryingAlbum ? null : GetSongsFromAlbumData(albumContent);
 
-            var albumName = skipQueryingAlbum ? "" : Utils.Utils.NavigateJsonNode(
+            var albumName = skipQueryingAlbum ? "" : Helpers.NavigateJsonNode(
                 albumContent,
                 "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                 "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
             )?.ToString();
             int? releaseYear = null;
-            if (!skipQueryingAlbum && int.TryParse(Utils.Utils.NavigateJsonNode(
+            if (!skipQueryingAlbum && int.TryParse(Helpers.NavigateJsonNode(
                     albumContent,
                     "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                     "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
@@ -171,7 +171,7 @@ namespace Downloader.Api.Apis
                 foreach (var songData in songsData ?? [])
                 {
                     if (videoId ==
-                        Utils.Utils.NavigateJsonNode(
+                        Helpers.NavigateJsonNode(
                             songData,
                             "musicResponsiveListItemRenderer", "overlay", "musicItemThumbnailOverlayRenderer",
                             "content", "musicPlayButtonRenderer", "playNavigationEndpoint", "watchEndpoint", "videoId"
@@ -257,7 +257,7 @@ namespace Downloader.Api.Apis
                 artistsNamesClean = artistsNameJoined;
             }
 
-            var results = Utils.Utils.ScoreFoundSongs((await Task.WhenAll([
+            var results = Helpers.ScoreFoundSongs((await Task.WhenAll([
                 Search(artistsNamesClean + " " + songTitleClean, SearchFor.Songs),
                 Search(artistsNamesClean + " " + songTitleClean, SearchFor.Videos),
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
@@ -308,7 +308,7 @@ namespace Downloader.Api.Apis
 
             var data = JsonNode.Parse(await response.Content.ReadAsStringAsync());
 
-            var contents = Utils.Utils.NavigateJsonNode(
+            var contents = Helpers.NavigateJsonNode(
                 data,
                 "contents", "tabbedSearchResultsRenderer", "tabs", 0, "tabRenderer", "content", "sectionListRenderer", "contents"
             );
@@ -392,7 +392,7 @@ namespace Downloader.Api.Apis
 
             return songsData?.Select(async (song, index) =>
             {
-                var songData = await GetSong("https://music.youtube.com/watch?v=" + Utils.Utils.NavigateJsonNode(
+                var songData = await GetSong("https://music.youtube.com/watch?v=" + Helpers.NavigateJsonNode(
                     song,
                     "musicResponsiveListItemRenderer", "overlay", "musicItemThumbnailOverlayRenderer",
                     "content", "musicPlayButtonRenderer", "playNavigationEndpoint", "watchEndpoint", "videoId"
@@ -403,17 +403,17 @@ namespace Downloader.Api.Apis
                     return new Song("", [""], "", 0, 0, 0, 0, "", "", GetId());
                 }
                 
-                songData.Title = Utils.Utils.NavigateJsonNode(
+                songData.Title = Helpers.NavigateJsonNode(
                     song,
                     "musicResponsiveListItemRenderer", "flexColumns",
                     0, "musicResponsiveListItemFlexColumnRenderer", "text", "runs", 0, "text"
                 )?.ToString() ?? songData.Title;
-                songData.Album = Utils.Utils.NavigateJsonNode(
+                songData.Album = Helpers.NavigateJsonNode(
                     albumContent,
                     "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                     "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
                 )?.ToString() ?? "";
-                if (int.TryParse(Utils.Utils.NavigateJsonNode(
+                if (int.TryParse(Helpers.NavigateJsonNode(
                         albumContent,
                         "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
                         "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
@@ -444,7 +444,7 @@ namespace Downloader.Api.Apis
 
             while (true)
             {
-                var continuation = Utils.Utils.NavigateJsonNode(
+                var continuation = Helpers.NavigateJsonNode(
                     data, "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", 
                     "sectionListRenderer", "contents", 0, "musicPlaylistShelfRenderer", "contents", -1,
                     "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"
@@ -470,14 +470,14 @@ namespace Downloader.Api.Apis
             
             async Task AddSongs(JsonNode? data, bool continuation)
             {
-                foreach (var jsonNode in ((continuation ? Utils.Utils.NavigateJsonNode(
+                foreach (var jsonNode in ((continuation ? Helpers.NavigateJsonNode(
                              data, "onResponseReceivedActions", 0, "appendContinuationItemsAction", "continuationItems"
-                         ) : Utils.Utils.NavigateJsonNode(
+                         ) : Helpers.NavigateJsonNode(
                              data, "contents", "twoColumnBrowseResultsRenderer", "secondaryContents", 
                              "sectionListRenderer", "contents", 0, "musicPlaylistShelfRenderer", "contents"
                          ))?.AsArray() ?? []))
                 {
-                    var song = await GetSong("https://music.youtube.com/watch?v=" + Utils.Utils.NavigateJsonNode(
+                    var song = await GetSong("https://music.youtube.com/watch?v=" + Helpers.NavigateJsonNode(
                         jsonNode, "musicResponsiveListItemRenderer", "flexColumns", 0,
                         "musicResponsiveListItemFlexColumnRenderer", "text", "runs", 0, "navigationEndpoint",
                         "watchEndpoint", "videoId"

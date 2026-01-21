@@ -36,23 +36,22 @@ namespace Downloader.Api.Apis
 
         public async Task Init()
         { 
-
-            var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
+            // var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
             // if you make it public, i hope you don't mind if i use it. thank you spotdl 
 
-            var clientId = "";
-            var clientSecret = "";
+            var clientId = "f8be6f4cf9ce4e309e690a50ed85e319";
+            var clientSecret = "173c58f5db7343a99f3adec06bb79dc4";
 
-            foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
-                var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
-                if (lineFormatted.StartsWith("\"client_id\":\"")) {
-                    clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
-                }
-                if (lineFormatted.StartsWith("\"client_secret\":\""))
-                {
-                    clientSecret = lineFormatted[..^2].Replace("\"client_secret\":\"", "");
-                }
-            }
+            // foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
+            //     var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
+            //     if (lineFormatted.StartsWith("\"client_id\":\"")) {
+            //         clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
+            //     }
+            //     if (lineFormatted.StartsWith("\"client_secret\":\""))
+            //     {
+            //         clientSecret = lineFormatted[..^2].Replace("\"client_secret\":\"", "");
+            //     }
+            // }
 
             var responseAuth = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage{
                 Method = HttpMethod.Post,

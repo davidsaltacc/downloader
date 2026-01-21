@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Downloader.Api;
 using Downloader.Api.Apis;
@@ -31,6 +32,8 @@ namespace Downloader
             Logger.Init();
             InitializeComponent();
             DataContext = this;
+            
+            TitleBarIcon.Source = new Bitmap("icon.ico");
             
             foreach (var codec in Settings.AllCodecsAndFormats.Keys)
             {
@@ -80,7 +83,7 @@ namespace Downloader
             DestinationFolderTextBox.Text = Settings.DestinationFolder;
             DestinationFolderTextBox.TextChanged += (_, __) =>
             {
-                Settings.DestinationFolder = DestinationFolderTextBox.Text ?? "";
+                Settings.DestinationFolder = DestinationFolderTextBox.Text ?? Settings.DefaultDestinationFolder;
                 Logger.Log("Set destination folder to " + Settings.DestinationFolder);
             };
             
@@ -107,6 +110,27 @@ namespace Downloader
 
                 Settings.DestinationFolder = DestinationFolderTextBox.Text = files[0].Path.AbsolutePath;
 
+            };
+
+            DestinationSubfolderTextBox.Text = Settings.DestinationSubfolder;
+            DestinationSubfolderTextBox.TextChanged += (_, __) =>
+            {
+                Settings.DestinationSubfolder = DestinationSubfolderTextBox.Text ?? Settings.DefaultDestinationSubfolder;
+                Logger.Log("Set subfolder to " + Settings.DestinationSubfolder);
+            };
+
+            SongFileNameTextBox.Text = Settings.SongFileName;
+            SongFileNameTextBox.TextChanged += (_, __) =>
+            {
+                Settings.SongFileName = SongFileNameTextBox.Text ?? Settings.DefaultSongFileName;
+                Logger.Log("Set song filename to " + Settings.SongFileName);
+            };
+
+            PlaylistFileNameTextBox.Text = Settings.PlaylistFileName;
+            PlaylistFileNameTextBox.TextChanged += (_, __) =>
+            {
+                Settings.PlaylistFileName = PlaylistFileNameTextBox.Text ?? Settings.DefaultPlaylistFileName;
+                Logger.Log("Set playlist file name to " + Settings.PlaylistFileName);
             };
 
         }
@@ -197,7 +221,28 @@ namespace Downloader
                 )
                 {
                     SetStatusText("Starting");
+
+                    if (!Path.Exists(Settings.DestinationFolder))
+                    {
+                        SetStatusText("Destination folder configured in settings does not exist.");
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            isBusy = false;
+                        });
+                        return;
+                    } 
                     
+                    try {
+                        Path.GetFullPath(Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, new Song("dummy album", ["dummy artist"], "dummy song", -1, -1, -1, 1999, "dummy image url", "dummy song url", "dummy api"))));
+                    } catch {
+                        SetStatusText("Subfolder configured in settings does not parse to valid folder.");
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            isBusy = false;
+                        });
+                        return;
+                    }
+                        
                     Logger.Log("Starting dependency download");
 
                     if (!await DependencyDownloader.EnsureFFmpegInstalled())
@@ -232,8 +277,8 @@ namespace Downloader
                     await dataSource.Init();
                     await audioSource.Init();
 
-                    SetStatusText("Getting songs");
-                    Logger.Log("Getting songs");
+                    SetStatusText("Fetching songs (It is normal for this to take a while)");
+                    Logger.Log("Fetching songs");
                     
                     var songs = await dataSource.GetSongs(url);
 
@@ -299,7 +344,7 @@ namespace Downloader
                             playlist += "\n" + Path.GetFileName(name);
                         }
 
-                        await File.WriteAllTextAsync("./downloaded/! playlist.m3u8", playlist);
+                        await File.WriteAllTextAsync("./downloaded/" + Helpers.SafeFileName(Settings.PlaylistFileName) + ".m3u8", playlist);
                     }
                     else if (Settings.CreatePlaylistFile)
                     {
@@ -308,6 +353,11 @@ namespace Downloader
 
                     SetStatusText("Done");
                     Logger.Log("Finished download");
+                    
+                    string finalFolder = Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, songs[0]));
+                    Directory.CreateDirectory(finalFolder); // create all folders leading up to the final folder
+                    Directory.Delete(finalFolder, true); // delete last folder for moving files - i do this because i don't think .Move creates all folders leading up to the final folder 
+                    Directory.Move("./downloaded/", finalFolder);
 
                 } else
                 {
@@ -337,19 +387,19 @@ namespace Downloader
                 return null;
             }
 
-            Logger.Log("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
-            SetStatusText("Downloading " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
+            Logger.Log("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
+            SetStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
             var downloaded = await source.DownloadSong(found, "./downloaded", percentage => 
             {
-                SetStatusText("Downloaded " + String.Join(", ", found.Artists) + " - " + found.Title + " - " + percentage + "%", slotId);
+                SetStatusText("Downloaded " + String.Join(", ", song.Artists) + " - " + song.Title + " - " + percentage + "%", slotId);
             });
             if (downloaded == null)
             {
                 return null;
             }
 
-            var newFilename = String.Join(", ", found.Artists) + " - " + found.Title + "." + downloaded.Split(".").Last();
-            newFilename = "./downloaded/" + Utils.Utils.SafeFileName(newFilename);
+            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song) + "." + downloaded.Split(".").Last();
+            newFilename = "./downloaded/" + Helpers.SafeFileName(newFilename);
             int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
             {
@@ -357,16 +407,16 @@ namespace Downloader
             }
             _usedFilenames.Add(newFilename);
 
-            Logger.Log("Finishing song " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
+            Logger.Log("Finishing song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             
-            SetStatusText("Adding metadata to " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
-            Utils.Utils.ApplyId3ToFile(downloaded, found, found.SongUrl);
+            SetStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
+            Helpers.ApplyId3ToFile(downloaded, song, found.SongUrl);
 
-            SetStatusText("Renaming and moving " + String.Join(", ", found.Artists) + " - " + found.Title, slotId);
+            SetStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
             File.Move(downloaded, newFilename, true);
 
             SetStatusText("", slotId);
-            Logger.Log("Fully downloaded song " + String.Join(", ", found.Artists) + " - " + found.Title + " in slot " + slotId);
+            Logger.Log("Fully downloaded song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             
             return newFilename;
 

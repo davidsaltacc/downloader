@@ -42,8 +42,8 @@ namespace Downloader.Utils
 
         public static async Task DownloadLatestFFmpeg()
         {
-            var file = await Utils.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip", ".");
-            Utils.ExtractAllFilesFromZipArchive(file, ".");
+            var file = await Helpers.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip", ".");
+            Helpers.ExtractAllFilesFromZipArchive(file, ".");
             Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f =>
             {
                 if (File.Exists(f))
@@ -96,8 +96,8 @@ namespace Downloader.Utils
 
         public static async Task DownloadLatestDeno()
         {
-            var file = await Utils.DownloadFile("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", ".");
-            Utils.ExtractFileFromZipArchive(file, "deno.exe", ".");
+            var file = await Helpers.DownloadFile("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", ".");
+            Helpers.ExtractFileFromZipArchive(file, "deno.exe", ".");
             File.Delete(file);
         }
         
@@ -148,7 +148,7 @@ namespace Downloader.Utils
 
         public static async Task DownloadLatestYtDlp()
         {
-            await Utils.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
+            await Helpers.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
         }
 
     }

@@ -15,7 +15,7 @@ namespace Downloader.Utils
         public static async Task<string> DownloadSong(Song song, string folder, Action<int> onProgressUpdate, string? uniqueSongIdentifier)
         {
             
-            var fullFilePath = Path.Join(folder, (uniqueSongIdentifier != null ? Utils.SafeFileName(uniqueSongIdentifier) : Utils.SafeFileName(String.Join(", ", song.Artists) + " - " + song.Title))).Replace("\\", "/");
+            var fullFilePath = Path.Join(folder, (uniqueSongIdentifier != null ? Helpers.SafeFileName(uniqueSongIdentifier) : Helpers.SafeFileName(String.Join(", ", song.Artists) + " - " + song.Title))).Replace("\\", "/");
 
             var process = new Process
             {
