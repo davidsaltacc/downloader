@@ -40,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="assets\**" />
+    <AvaloniaResource Include="assets\**" />
   </ItemGroup>
   
   <Target Name="PreBuild" BeforeTargets="Build">

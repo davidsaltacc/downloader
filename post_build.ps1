@@ -23,6 +23,11 @@ $exename = $kvPairs["exename"]
 $version = $kvPairs["version"]
 $buildpath = $buildTarget
 
+
+if ($buildTarget) {
+    Copy-Item "icons\icon.ico" -Destination "$buildTarget"
+}
+
 if ($isPublish) {
 
     # delete unneccessary files
