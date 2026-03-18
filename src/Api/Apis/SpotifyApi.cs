@@ -39,8 +39,8 @@ namespace Downloader.Api.Apis
             // var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
             // if you make it public, i hope you don't mind if i use it. thank you spotdl 
 
-            var clientId = "f8be6f4cf9ce4e309e690a50ed85e319";
-            var clientSecret = "173c58f5db7343a99f3adec06bb79dc4";
+            var clientId = "5f573c9620494bae87890c0f08a60293";
+            var clientSecret = "212476d9b0f3472eaa762d90b19b0ba8";
 
             // foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
             //     var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");

@@ -45,3 +45,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Support for other platforms?
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
 - ... more?
+
+## Not planned
+
+- Downloading from spotify directly. Reason: Spotify is a shitty company. (And no libraries or tools seem to fully support downloading from spotify because Spotify is one of the most stubborn companies when it comes to restricting users from downloading or modding anything that they do not like.)
