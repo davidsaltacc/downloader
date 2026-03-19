@@ -10,7 +10,34 @@ namespace Downloader.Api.Apis;
 public class TidalApi : ISongAudioSource
 {
 
-    private static string? API_URL;
+    private readonly bool _isLosslessInstance;
+
+    private TidalApi(bool lossless)
+    {
+        _isLosslessInstance = lossless;
+    }
+
+    private static TidalApi? _instanceLossless;
+    private static TidalApi? _instanceNotLossless;
+    
+    public static TidalApi InstanceLossless
+    {
+        get
+        {
+            _instanceLossless ??= new TidalApi(true);
+            return _instanceLossless;
+        }
+    }
+    public static TidalApi InstanceNotLossless
+    {
+        get
+        {
+            _instanceNotLossless ??= new TidalApi(false);
+            return _instanceNotLossless;
+        }
+    }
+
+    private static string? _apiUrl;
 
     public async Task Init()
     {
@@ -33,7 +60,7 @@ public class TidalApi : ISongAudioSource
                 return [];
             }
 
-            return data?["api"]?.AsArray()
+            return data["api"]?.AsArray()
                 .Where(u => u != null)
                 .Select(u => u.AsObject().ToString())
                 .ToArray();
@@ -42,18 +69,39 @@ public class TidalApi : ISongAudioSource
         
         foreach (var listUrl in apiUrlLists)
         {
-            
+            foreach (var apiUrl in await getUrlsInList(listUrl))
+            {
+                var originalSpan = MainWindow.HttpClient.Timeout;
+                MainWindow.HttpClient.Timeout = TimeSpan.FromSeconds(20);
+                var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+                {
+                    Method = HttpMethod.Get,
+                    RequestUri = new Uri(apiUrl)
+                });
+                MainWindow.HttpClient.Timeout = originalSpan;
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    continue;
+                }
+                
+                _apiUrl = apiUrl;
+                return;
+            }
         }
+
+        _apiUrl = null;
+        
     }
 
     public string GetName()
     {
-        return "Tidal (Hi-Fi API)";
+        return "Tidal (Hi-Fi API) " + (_isLosslessInstance ? "(Lossless)" : "(High Quality)");
     }
 
     public string GetId()
     {
-        return "tidal";
+        return "tidal-" + (_isLosslessInstance ? "lossless" : "not-lossless");
     }
 
     public async Task<Song?> FindSong(Song originalSong)

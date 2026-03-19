@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Downloader.Api.Apis;
 
-namespace Downloader.Api.Apis;
+namespace Downloader.Api;
 
 public interface ISongApi
 {
@@ -13,7 +14,9 @@ public interface ISongApi
     public static readonly List<ISongApi> AllApis = [
         SpotifyApi.Instance, 
         YoutubeMusicApi.Instance,
-        SoundCloudApi.Instance
+        SoundCloudApi.Instance,
+        TidalApi.InstanceLossless,
+        TidalApi.InstanceNotLossless
     ];
 
     public static ISongApi? GetApiById(string id)
