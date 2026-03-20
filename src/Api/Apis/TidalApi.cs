@@ -133,6 +133,11 @@ public class TidalApi : ISongAudioSource
         return "tidal-" + (_isLosslessInstance ? "lossless" : "not-lossless");
     }
 
+    public bool UrlPartOfPlatform(string url)
+    {
+        return new Uri(url).Host.Contains("tidal", StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task<Song?> ParseSong(JsonNode? json)
     {
         try
@@ -223,7 +228,21 @@ public class TidalApi : ISongAudioSource
 
     public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
     {
-        throw new NotImplementedException();
+
+        if (!UrlPartOfPlatform(song.SongUrl))
+        {
+            throw new Exception("Tried to download non-tidal song over tidal api (this should not happen)");
+        }
+
+        string trackId = song.SongUrl.Split("/track/")[1];
+        string quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : "HIGH";
+
+        var response = await ApiRequest("/track?id=" + trackId + "&quality=" + quality);
+        
+        // todo decode manifest https://github.com/binimum/hifi-api?tab=readme-ov-file#get-track
+        
+        // todo then pass onto yt-dlp - for b64json manifests decode manually and send to yt-dlp, for dash/mpd save to file and pass to yt-dlp
+
     }
     
 }

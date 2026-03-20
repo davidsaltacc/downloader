@@ -10,6 +10,7 @@ public interface ISongApi
     public Task Init();
     public string GetName();
     public string GetId();
+    public bool UrlPartOfPlatform(string url);
 
     public static readonly List<ISongApi> AllApis = [
         SpotifyApi.Instance, 

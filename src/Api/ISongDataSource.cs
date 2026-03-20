@@ -9,7 +9,6 @@ public interface ISongDataSource : ISongApi
 {
     
     Task<Song[]> GetSongs(string url);
-    bool UrlPartOfPlatform(string url);
     
     public static ISongDataSource? FromISongApi(ISongApi api)
     {
