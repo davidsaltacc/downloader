@@ -216,8 +216,8 @@ public class TidalApi : ISongAudioSource
         }
 
         var finalSong = results.OrderBy(x => -x.Key).ToList()[0].Value;
-        return new Song(originalSong.Album, originalSong.Artists, originalSong.Title, originalSong.DurationMs, originalSong.IndexOnDisk,
-            originalSong.DiskIndex, originalSong.ReleaseYear, originalSong.ImageUrl, finalSong.SongUrl, GetId());
+        return new Song(finalSong.Album, finalSong.Artists, finalSong.Title, finalSong.DurationMs, finalSong.IndexOnDisk,
+            finalSong.DiskIndex, finalSong.ReleaseYear, finalSong.ImageUrl, finalSong.SongUrl, GetId());
         
     }
 
