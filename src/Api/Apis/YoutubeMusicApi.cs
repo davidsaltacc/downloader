@@ -522,7 +522,7 @@ namespace Downloader.Api.Apis
 
         public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
         {
-            return await YtDlpApi.DownloadSong(song, folder, onProgressUpdate, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v"));
+            return await YtDlpApi.DownloadSong(song, song.SongUrl, folder, onProgressUpdate, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v"));
         }
         
         public bool UrlPartOfPlatform(string url)

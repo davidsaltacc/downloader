@@ -22,8 +22,14 @@ namespace Downloader
 {
     public partial class MainWindow : Window
     {
-
-        public static readonly HttpClient HttpClient = new();
+        
+        private static HttpClientHandler _httpClientHandler = new HttpClientHandler();
+        static MainWindow()
+        {
+            _httpClientHandler.AllowAutoRedirect = true;
+        }
+        
+        public static readonly HttpClient HttpClient = new(_httpClientHandler);
         private static bool _ignoreStatusTextChanges = false;
 
         public MainWindow()
@@ -385,7 +391,7 @@ namespace Downloader
             if (found == null)
             {
                 return null;
-            }
+            } // we check for null here. you'd think if its null, it just returns! no, for some reason, it complains about it being null later.
 
             Logger.Log("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
@@ -397,8 +403,12 @@ namespace Downloader
             {
                 return null;
             }
+            
+            SetStatusText("Encoding " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
+            var reEncoded = await FFMpegApi.ReEncode(downloaded, Settings.Codec, true);
+            SetStatusText("Encoded " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
 
-            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song) + "." + downloaded.Split(".").Last();
+            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song) + "." + reEncoded.Split(".").Last();
             newFilename = "./downloaded/" + Helpers.SafeFileName(newFilename);
             int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
@@ -410,10 +420,10 @@ namespace Downloader
             Logger.Log("Finishing song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             
             SetStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
-            Helpers.ApplyId3ToFile(downloaded, song, found.SongUrl);
+            Helpers.ApplyId3ToFile(reEncoded, song, found.SongUrl);
 
             SetStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
-            File.Move(downloaded, newFilename, true);
+            File.Move(reEncoded, newFilename, true);
 
             SetStatusText("", slotId);
             Logger.Log("Fully downloaded song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);

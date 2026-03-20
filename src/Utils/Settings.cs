@@ -31,14 +31,14 @@ public abstract class Settings
 
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());
     
-    public static string Codec = "mp3";
-    public static readonly string DefaultCodec = "mp3";
+    public static string Codec = "aac";
+    public static readonly string DefaultCodec = "aac";
 
     public static int Threads = 5;
     public static readonly int DefaultThreads = 5;
 
-    public static string SongAudioSource = YoutubeMusicApi.Instance.GetId();
-    public static readonly string DefaultSongAudioSource = YoutubeMusicApi.Instance.GetId();
+    public static string SongAudioSource = TidalApi.InstanceNotLossless.GetId();
+    public static readonly string DefaultSongAudioSource = TidalApi.InstanceNotLossless.GetId();
 
     public static bool CreatePlaylistFile = true;
     public static readonly bool DefaultCreatePlaylistFile = true;

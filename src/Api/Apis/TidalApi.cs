@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Downloader.Utils;
@@ -72,16 +76,25 @@ public class TidalApi : ISongAudioSource
         
         foreach (var listUrl in apiUrlLists)
         {
-            foreach (var apiUrl in await getUrlsInList(listUrl))
+            foreach (var apiUrlJson in await getUrlsInList(listUrl))
             {
-                var originalSpan = MainWindow.HttpClient.Timeout;
-                MainWindow.HttpClient.Timeout = TimeSpan.FromSeconds(20);
+
+                var apiUrlData = JsonNode.Parse(apiUrlJson);
+                var apiUrl = apiUrlData?["url"]?.ToString();
+
+                if (apiUrl == null)
+                {
+                    continue;
+                }
+                
+                using var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(20));
+                
                 var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
                 {
                     Method = HttpMethod.Get,
                     RequestUri = new Uri(apiUrl)
-                });
-                MainWindow.HttpClient.Timeout = originalSpan;
+                }, cts.Token);
                 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -149,7 +162,7 @@ public class TidalApi : ISongAudioSource
                 (json?["duration"]?.GetValue<int>() ?? -1/1000) * 1000,
                 json?["trackNumber"]?.GetValue<int>() ?? -1,
                 json?["volumeNumber"]?.GetValue<int>() ?? -1,
-                int.TryParse((await ApiRequest("/album?id=" + json?["album"]?["id"]))?["data"]?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
+                int.TryParse((await ApiRequest("/album/?id=" + json?["album"]?["id"]))?["data"]?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
                 "https://resources.tidal.com/images/" + json?["album"]?["cover"]?.ToString().Replace("-", "/") + "/1280x1280.jpg",
                 json?["url"]?.ToString() ?? "",
                 GetId()
@@ -164,7 +177,7 @@ public class TidalApi : ISongAudioSource
     private async Task<List<Song>> Search(string query)
     {
 
-        var response = await ApiRequest("/search?s=" + HttpUtility.UrlEncode(query));
+        var response = await ApiRequest("/search/?s=" + HttpUtility.UrlEncode(query));
 
         var songs = response?["data"]?["items"];
 
@@ -237,11 +250,49 @@ public class TidalApi : ISongAudioSource
         string trackId = song.SongUrl.Split("/track/")[1];
         string quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : "HIGH";
 
-        var response = await ApiRequest("/track?id=" + trackId + "&quality=" + quality);
+        var response = await ApiRequest("/track/?id=" + trackId + "&quality=" + quality);
         
-        // todo decode manifest https://github.com/binimum/hifi-api?tab=readme-ov-file#get-track
-        
-        // todo then pass onto yt-dlp - for b64json manifests decode manually and send to yt-dlp, for dash/mpd save to file and pass to yt-dlp
+        if (response?["data"] == null)
+        {
+            return null;
+        }
+
+        if (response["data"]?["manifestMimeType"]?.ToString() == "application/vnd.tidal.bts")
+        {
+            
+            var decodedManifest = JsonNode.Parse(Convert.FromBase64String(response["data"]?["manifest"]?.ToString() ?? Convert.ToBase64String("{}"u8.ToArray())));
+
+            if (decodedManifest?["urls"] == null || decodedManifest["urls"]?.AsArray().Count < 1)
+            {
+                return null;
+            }
+
+            var downloaded = await Helpers.DownloadFile(decodedManifest["urls"]?[0]?.ToString(), folder);
+
+            return downloaded; 
+
+        }
+        if (response["data"]?["manifestMimeType"]?.ToString() == "application/dash+xml")
+        {
+
+            var manifest = response["data"]?["manifest"]?.ToString();
+            if (manifest == null)
+            {
+                return null;
+            }
+
+            var decodedManifest = Encoding.UTF8.GetString(Convert.FromBase64String(manifest));
+            var path = Path.Join(folder, trackId + "-manifest.mpd");
+            await File.WriteAllTextAsync(path, decodedManifest);
+
+            var downloaded = await YtDlpApi.DownloadSong(song, path, folder, onProgressUpdate, trackId);
+            File.Delete(path);
+
+            return downloaded;
+
+        }
+
+        return null;
 
     }
     

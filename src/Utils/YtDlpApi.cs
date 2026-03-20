@@ -10,10 +10,10 @@ namespace Downloader.Utils
     internal abstract class YtDlpApi
     {
 
-        public static async Task<string> DownloadSong(Song song, string folder, Action<int> onProgressUpdate, string? uniqueSongIdentifier)
+        public static async Task<string> DownloadSong(Song song, string downloadUrl, string folder, Action<int> onProgressUpdate, string? uniqueSongIdentifier)
         {
             
-            var fullFilePath = Path.Join(folder, (uniqueSongIdentifier != null ? Helpers.SafeFileName(uniqueSongIdentifier) : Helpers.SafeFileName(String.Join(", ", song.Artists) + " - " + song.Title))).Replace("\\", "/");
+            var fullFilePath = Path.Join(folder, uniqueSongIdentifier != null ? Helpers.SafeFileName(uniqueSongIdentifier) : Helpers.SafeFileName(String.Join(", ", song.Artists) + " - " + song.Title)).Replace("\\", "/");
 
             var process = new Process
             {
@@ -21,7 +21,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" -x -f \"ba/b\" --audio-format {Settings.Codec} {song.SongUrl}",
+                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" -x -f \"ba/b\" \"{downloadUrl}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

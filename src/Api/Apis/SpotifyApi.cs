@@ -36,22 +36,22 @@ namespace Downloader.Api.Apis
 
         public async Task Init()
         { 
-            // var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
+            var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
             // if you make it public, i hope you don't mind if i use it. thank you spotdl 
 
-            var clientId = "5f573c9620494bae87890c0f08a60293";
-            var clientSecret = "212476d9b0f3472eaa762d90b19b0ba8";
+            var clientId = "";
+            var clientSecret = "";
 
-            // foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
-            //     var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
-            //     if (lineFormatted.StartsWith("\"client_id\":\"")) {
-            //         clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
-            //     }
-            //     if (lineFormatted.StartsWith("\"client_secret\":\""))
-            //     {
-            //         clientSecret = lineFormatted[..^2].Replace("\"client_secret\":\"", "");
-            //     }
-            // }
+            foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
+                var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
+                if (lineFormatted.StartsWith("\"client_id\":\"")) {
+                    clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
+                }
+                if (lineFormatted.StartsWith("\"client_secret\":\""))
+                {
+                    clientSecret = lineFormatted[..^2].Replace("\"client_secret\":\"", "");
+                }
+            }
 
             var responseAuth = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage{
                 Method = HttpMethod.Post,
