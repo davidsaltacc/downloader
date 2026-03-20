@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using Downloader.Utils;
 
 namespace Downloader.Api.Apis;
@@ -94,6 +97,32 @@ public class TidalApi : ISongAudioSource
         
     }
 
+    private async Task<JsonNode?> ApiRequest(string endpoint)
+    {
+
+        if (_apiUrl == null)
+        {
+            return null;
+        }
+        
+        var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+        {
+            Method = HttpMethod.Get,
+            RequestUri = new Uri(_apiUrl + endpoint)
+        });
+        
+        var content = await response.Content.ReadAsStringAsync();
+        try
+        {
+            return JsonNode.Parse(content);
+        }
+        catch
+        {
+            return null;
+        }
+
+    }
+
     public string GetName()
     {
         return "Tidal (Hi-Fi API) " + (_isLosslessInstance ? "(Lossless)" : "(High Quality)");
@@ -104,9 +133,92 @@ public class TidalApi : ISongAudioSource
         return "tidal-" + (_isLosslessInstance ? "lossless" : "not-lossless");
     }
 
+    private async Task<Song?> ParseSong(JsonNode? json)
+    {
+        try
+        {
+            return new Song(
+                json?["album"]?["title"]?.ToString() ?? "",
+                json?["artists"]?.AsArray().Select(a => a?["name"]?.ToString()).Where(s => s != null).Select(s => (string) s).ToArray(),
+                json?["title"]?.ToString()!,
+                (json?["duration"]?.GetValue<int>() ?? -1/1000) * 1000,
+                json?["trackNumber"]?.GetValue<int>() ?? -1,
+                json?["volumeNumber"]?.GetValue<int>() ?? -1,
+                int.TryParse((await ApiRequest("/album?id=" + json?["album"]?["id"]))?["data"]?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
+                "https://resources.tidal.com/images/" + json?["album"]?["cover"]?.ToString().Replace("-", "/") + "/1280x1280.jpg",
+                json?["url"]?.ToString() ?? "",
+                GetId()
+            );
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<List<Song>> Search(string query)
+    {
+
+        var response = await ApiRequest("/search?s=" + HttpUtility.UrlEncode(query));
+
+        var songs = response?["data"]?["items"];
+
+        if (songs == null)
+        {
+            return [];
+        }
+
+        return (await Task.WhenAll(songs.AsArray().Select(s => ParseSong(s)))).Where(s => s != null).Select(s => (Song) s).ToList();
+
+    }
+
     public async Task<Song?> FindSong(Song originalSong)
     {
-        throw new NotImplementedException();
+
+        if (originalSong.SourceApi.StartsWith("tidal-"))
+        {
+            return originalSong;
+        }
+
+        if (originalSong.Title.Length == 0)
+        {
+            return null;
+        }
+        
+        var artistsNameJoined = string.Join(" ", originalSong.Artists);
+
+        var songTitleClean = Regex.Replace(originalSong.Title, @"[\p{S}]+", " ").Trim();
+        var artistsNamesClean = Regex.Replace(artistsNameJoined, @"[\p{S}]+", " ").Trim();
+
+        if (songTitleClean.Length < originalSong.Title.Length * 0.4)
+        {
+            songTitleClean = originalSong.Title;
+        }
+
+        if (artistsNamesClean.Length < artistsNameJoined.Length * 0.6)
+        {
+            artistsNamesClean = artistsNameJoined;
+        }
+
+        List<Task<List<Song>>> tasks = [
+            Search(artistsNamesClean + " " + songTitleClean)
+        ];
+        if (artistsNamesClean != artistsNameJoined || songTitleClean != originalSong.Title)
+        {
+            tasks.Add(Search(artistsNameJoined + " " + originalSong.Title));
+        }
+
+        var results = Helpers.ScoreFoundSongs((await Task.WhenAll(tasks)).SelectMany(x => x).Distinct().ToList(), originalSong, false);
+
+        if (results.Count == 0)
+        {
+            return null;
+        }
+
+        var finalSong = results.OrderBy(x => -x.Key).ToList()[0].Value;
+        return new Song(originalSong.Album, originalSong.Artists, originalSong.Title, originalSong.DurationMs, originalSong.IndexOnDisk,
+            originalSong.DiskIndex, originalSong.ReleaseYear, originalSong.ImageUrl, finalSong.SongUrl, GetId());
+        
     }
 
     public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
