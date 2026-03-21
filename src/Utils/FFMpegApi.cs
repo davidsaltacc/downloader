@@ -9,16 +9,15 @@ namespace Downloader.Utils;
 public class FFMpegApi
 {
 
-    public static async Task<string> ReEncode(string originalFile, string codec, bool deleteOriginalAfterwards)
+    public static async Task<string> DetectAudioCodec(string file)
     {
-        
         var ffprobeProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = "ffprobe.exe",
                 WorkingDirectory = Environment.CurrentDirectory,
-                Arguments = "-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 \"" + originalFile + "\"", // just print codec
+                Arguments = "-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 \"" + file + "\"", // just print codec
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -26,17 +25,23 @@ public class FFMpegApi
             }
         };
 
-        var data = "";
-        ffprobeProcess.OutputDataReceived += (_, a) => data += a.Data ?? "";
+        var codecDetected = "";
+        ffprobeProcess.OutputDataReceived += (_, a) => codecDetected += a.Data ?? "";
         ffprobeProcess.Start();
+        ffprobeProcess.BeginOutputReadLine();
         await ffprobeProcess.WaitForExitAsync();
 
+        return codecDetected.Trim()
+            .Replace("pcm_s16le", "wav").Replace("pcm_s24le", "wav").Replace("pcm_s32le", "wav");
+    }
+
+    public static async Task<string> ReEncode(string originalFile, string codec, bool deleteOriginalAfterwards)
+    {
+
+        var codecDetected = await DetectAudioCodec(originalFile);
         var args = "";
 
-        if (codec != "wav" && data.Trim().Contains(codec) ||
-            (codec == "wav" && data.Trim().Contains("pcm_s16le")) ||
-            (codec == "wav" && data.Trim().Contains("pcm_s24le")) ||
-            (codec == "wav" && data.Trim().Contains("pcm_s32le")))
+        if (codec == "original" || codecDetected.Contains(codec))
         {
             args += "-c copy";
         }
@@ -55,7 +60,7 @@ public class FFMpegApi
             };
         }
 
-        var newFname = String.Join(".", originalFile.Split(".").SkipLast(1)) + "_reenc." + Settings.AllCodecsAndFormats[codec];
+        var newFname = String.Join(".", originalFile.Split(".").SkipLast(1)) + "_reenc." + Settings.AllCodecsAndFormats[(codec == "original" || codecDetected.Contains(codec)) ? codecDetected : codec];
 
         args = "-i \"" + originalFile + "\" " + args + " \"" + newFname + "\"";
         
@@ -74,18 +79,12 @@ public class FFMpegApi
         };
 
         var ffmpegOut = "";
-        ffmpegProcess.OutputDataReceived += (_, a) => ffmpegOut += a.Data ?? "";
+        ffmpegProcess.ErrorDataReceived += (_, a) => ffmpegOut += a.Data ?? "";
         ffmpegProcess.Start();
+        ffmpegProcess.BeginErrorReadLine();
         await ffmpegProcess.WaitForExitAsync();
         
-        Logger.Log("ffmpeg output: " + ffmpegOut); 
-        // TODO 1. ffmpreg output doesnt show here, probably update this thingy
-        // TODO 2. test/fix same-codec encoding (should copy, does not) - ffprobe output is broken for same reason as this - test with ytm - opus 2 opus
-        // TODO 3. see if bitrate can be limited to original or something, kinda stupid to see a file inflate in size (ytm-opus with like 1?? kb/s to whatever with 300+ kb/s)
-        // TODO 4. fix rest of re-encoding stuff
-        // TODO 5. fix tidal downloading (lossy)
-        // TODO 6. try tidal lossless downloading
-        // TODO 7. spotify TOTP generation/extraction for not relying on spotDL - important!
+        Logger.Log("FFmpeg output: " + ffmpegOut); 
         
         if (deleteOriginalAfterwards)
         {

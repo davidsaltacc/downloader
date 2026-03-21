@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -21,7 +22,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno.exe --no-part --newline --progress -o \"{fullFilePath}\" -x -f \"ba/b\" \"{downloadUrl}\"",
+                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno --no-part --newline --progress --print filename -o \"{fullFilePath}.%(ext)s\" -f \"ba/b\" \"{downloadUrl}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -30,6 +31,8 @@ namespace Downloader.Utils
             };
 
             process.Start();
+
+            var filename = "";
 
             while (true)
             {
@@ -41,6 +44,10 @@ namespace Downloader.Utils
                 var data = Regex.Replace(line, @"\s+", " ").Split(" ");
                 if (!float.TryParse(data[1].Replace("%", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var percent))
                 {
+                    if (filename.Length == 0)
+                    {
+                        filename = line.Trim();
+                    }
                     continue;
                 }
                 onProgressUpdate((int) Math.Round(percent));
@@ -48,7 +55,7 @@ namespace Downloader.Utils
 
             await process.WaitForExitAsync();
 
-            return fullFilePath + "." + Settings.AllCodecsAndFormats[Settings.Codec];
+            return fullFilePath + "." + filename.Split(".").Last();
 
         }
 

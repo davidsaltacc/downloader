@@ -68,7 +68,7 @@ namespace Downloader
             ThreadSelection.Value = Settings.Threads;
             ThreadSelection.ValueChanged += (_, args) =>
             {
-                Settings.Threads = (int) Math.Floor(args.NewValue ?? Settings.Threads); 
+                Settings.Threads = (int) Math.Floor(args.NewValue ?? Settings.DefaultThreads); 
                 Logger.Log("Selected " + Settings.Threads + " concurrent threads");
             };
 
@@ -254,17 +254,17 @@ namespace Downloader
                     if (!await DependencyDownloader.EnsureFFmpegInstalled())
                     {
                         SetStatusText("Downloading FFmpeg");
-                        await DependencyDownloader.DownloadLatestFFmpeg();
+                        await DependencyDownloader.DownloadLatestFFmpeg(progress => SetStatusText("Downloading FFmpeg - " + progress + "%"));
                     }
                     if (!await DependencyDownloader.EnsureLatestYtDlpInstalled())
                     {
                         SetStatusText("Downloading yt-dlp");
-                        await DependencyDownloader.DownloadLatestYtDlp();
+                        await DependencyDownloader.DownloadLatestYtDlp(progress => SetStatusText("Downloading yt-dlp - " + progress + "%"));
                     }
                     if (!await DependencyDownloader.EnsureLatestDenoInstalled())
                     {
                         SetStatusText("Downloading Deno");
-                        await DependencyDownloader.DownloadLatestDeno();
+                        await DependencyDownloader.DownloadLatestDeno(progress => SetStatusText("Downloading Deno - " + progress + "%"));
                     }
 
                     Logger.Log("Initializing APIs");
@@ -420,7 +420,7 @@ namespace Downloader
             Logger.Log("Finishing song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             
             SetStatusText("Adding metadata to " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
-            Helpers.ApplyId3ToFile(reEncoded, song, found.SongUrl);
+            await Helpers.ApplyId3ToFile(reEncoded, song, found.SongUrl);
 
             SetStatusText("Renaming and moving " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
             File.Move(reEncoded, newFilename, true);

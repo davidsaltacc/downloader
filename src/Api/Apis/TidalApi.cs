@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -10,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using System.Xml.Linq;
 using Downloader.Utils;
 
 namespace Downloader.Api.Apis;
@@ -93,10 +93,16 @@ public class TidalApi : ISongAudioSource
                 var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
                 {
                     Method = HttpMethod.Get,
-                    RequestUri = new Uri(apiUrl)
+                    RequestUri = new Uri(apiUrl + "/track/?id=55391801")
                 }, cts.Token);
                 
                 if (!response.IsSuccessStatusCode)
+                {
+                    continue;
+                }
+
+                if (JsonNode.Parse(await response.Content.ReadAsStringAsync())?["data"]?["assetPresentation"]?
+                        .ToString() != "FULL") // downloading not supported
                 {
                     continue;
                 }
@@ -226,7 +232,7 @@ public class TidalApi : ISongAudioSource
             tasks.Add(Search(artistsNameJoined + " " + originalSong.Title));
         }
 
-        var results = Helpers.ScoreFoundSongs((await Task.WhenAll(tasks)).SelectMany(x => x).Distinct().ToList(), originalSong, false);
+        var results = Helpers.ScoreFoundSongs((await Task.WhenAll(tasks)).SelectMany(x => x).Distinct().ToList(), originalSong, false, true);
 
         if (results.Count == 0)
         {
@@ -267,14 +273,16 @@ public class TidalApi : ISongAudioSource
                 return null;
             }
 
-            var downloaded = await Helpers.DownloadFile(decodedManifest["urls"]?[0]?.ToString(), folder);
+            var downloaded = await Helpers.DownloadFile(decodedManifest["urls"]?[0]?.ToString(), folder, onProgressUpdate);
 
             return downloaded; 
 
         }
         if (response["data"]?["manifestMimeType"]?.ToString() == "application/dash+xml")
-        {
-
+        { 
+            // apparently yt-dlp seems to support mpd manifests, but it doesn't like local files, plus there may or may not be some quirks to tidal/hi-fi's returned manifests, so i do it myself here
+            // mpd manifest decoding mostly ported over from binimum/tidal-ui
+            
             var manifest = response["data"]?["manifest"]?.ToString();
             if (manifest == null)
             {
@@ -282,13 +290,233 @@ public class TidalApi : ISongAudioSource
             }
 
             var decodedManifest = Encoding.UTF8.GetString(Convert.FromBase64String(manifest));
-            var path = Path.Join(folder, trackId + "-manifest.mpd");
-            await File.WriteAllTextAsync(path, decodedManifest);
+            
+            
+            var mpd = XDocument.Parse(decodedManifest);
+            var ns = mpd.Root?.Name.Namespace;
 
-            var downloaded = await YtDlpApi.DownloadSong(song, path, folder, onProgressUpdate, trackId);
-            File.Delete(path);
+            bool ValidMediaUrl(string? url)
+            {
+                if (url == null)
+                {
+                    return false;
+                }
 
-            return downloaded;
+                url = url.ToLower();
+                if (url.Contains("w3.org") || url.Contains("xmlschema") || url.Contains("xmlns"))
+                {
+                    return false;
+                }
+                if (url.Contains(".flac") || url.Contains(".mp4") || url.Contains(".m4a") ||
+                    url.Contains(".aac") || url.Contains("token=") || url.Contains("/audio/"))
+                {
+                    return true;
+                }
+                if (Regex.Match(url, @"\/[^\/]+\.[a-z0-9]{2,5}(\?|$)", RegexOptions.IgnoreCase).Success ||
+                    Regex.Match(url, @"^[a-z0-9_-]+\/", RegexOptions.IgnoreCase).Success ||
+                    Regex.Match(url, @"\/[a-z0-9_-]+$", RegexOptions.IgnoreCase).Success)
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (decodedManifest.Contains("<SegmentTemplate"))
+            {
+                
+                var parsedBaseUrl = mpd.Descendants(ns + "BaseURL").FirstOrDefault()?.Value.Trim();
+                var baseUrl = parsedBaseUrl != null && ValidMediaUrl(parsedBaseUrl) ? parsedBaseUrl : null;
+
+                XElement? template = null;
+                string? codec = null;
+
+                foreach (var rep in mpd.Descendants(ns + "Representation"))
+                {
+                    var cTemplate = rep.Descendants(ns + "SegmentTemplate").FirstOrDefault();
+                    if (cTemplate == null)
+                    {
+                        continue;
+                    }
+
+                    var codecs = rep.Attribute("codecs")?.Value.ToLower() ?? "";
+
+                    if (codecs.Contains("flac") || template == null)
+                    {
+                        template = cTemplate;
+                        codec = codecs.Length > 0 ? codecs : null;
+                        if (codecs.Contains("flac"))
+                        {
+                            break;
+                        }
+                    }
+
+                }
+
+                template ??= mpd.Descendants(ns + "SegmentTemplate").FirstOrDefault();
+
+                if (template == null)
+                {
+                    return null;
+                }
+
+                var initUrl = template.Attribute("initialization")?.Value.Trim();
+                var mediaUrlTemplate = template.Attribute("media")?.Value.Trim();
+
+                if (initUrl == null || mediaUrlTemplate == null)
+                {
+                    return null;
+                }
+
+                var segmentNumber = Int32.Parse(template.Attribute("startNumber")?.Value ?? "1");
+                var timelineParent = template.Descendants(ns + "SegmentTimeline").FirstOrDefault();
+                var timeline = new List<KeyValuePair<int, int>>();
+
+                if (timelineParent != null)
+                {
+                    var segments = timelineParent.Descendants(ns + "S");
+                    foreach (var segment in segments)
+                    {
+                        var duration = Int32.Parse(segment.Attribute("d")?.Value ?? "0");
+                        if (duration <= 0)
+                        {
+                            continue; 
+                        } 
+                        var repeat = Int32.Parse(segment.Attribute("r")?.Value ?? "0");
+                        timeline.Add(new KeyValuePair<int, int>( duration, repeat ));
+                    }
+                }
+
+                if (timeline.Count == 0)
+                {
+                    timeline.Add(new KeyValuePair<int, int>(0, 0));
+                }
+
+                string ResolveUrl(string url)
+                {
+                    if (Regex.Match(url, @"^https?:\/\/", RegexOptions.IgnoreCase).Success)
+                    {
+                        return url;
+                    }
+
+                    if (baseUrl != null)
+                    {
+                        try
+                        {
+                            return new Uri(new Uri(baseUrl), url).ToString();
+                        }
+                        catch
+                        {
+                            return Regex.Replace(baseUrl, @"\/+$", "") + "/" + Regex.Replace(url, @"^\/+", "");
+                        }
+                    }
+
+                    return url;
+                }
+
+                List<string> allUrls = [
+                    ResolveUrl(initUrl)
+                ];
+
+                foreach (var entry in timeline)
+                {
+                    var repeat = entry.Value;
+                    var count = Math.Max(1, repeat + 1);
+                    for (var i = 0; i < count; i += 1) {
+                        allUrls.Add(ResolveUrl(mediaUrlTemplate.Replace("$Number$", segmentNumber.ToString())));
+                        segmentNumber += 1;
+                    }
+                }
+                
+                using HttpClient client = new();
+
+                var fName = trackId + ".flac";
+                var path = Path.Join(folder, trackId + ".flac");
+                await using var file = File.Create(path);
+
+                var j = 0;
+                foreach (var url in allUrls)
+                {
+                    await Helpers.DownloadFileToStream(url, file, progress =>
+                    {
+                        if (j > 0)
+                        {
+                            onProgressUpdate((int) Math.Round(progress / (allUrls.Count - 1d) + (j - 1d) * (100d / (allUrls.Count - 1d))));
+                        }
+                    });
+                    j++;
+                }
+
+                return Path.Join(folder, fName);
+
+            }
+
+            int ScoreUrl(string? url)
+            {
+                if (url == null)
+                {
+                    return -1;
+                }
+
+                url = url.ToLower();
+                var score = 0;
+                
+                if (url.Contains("flac")) {
+                    score += 3;
+                }
+                if (url.Contains("hires")) {
+                    score += 1;
+                }
+                if (url.EndsWith(".flac")) {
+                    score += 4;
+                }
+                if (url.Contains("token=")) {
+                    score += 1;
+                }
+
+                return score;
+            }
+
+            string? BestUrl(List<string> urls)
+            {
+                return urls
+                    .Where(u => u.Length > 0 && ValidMediaUrl(u))
+                    .OrderByDescending(u => ScoreUrl(u)).FirstOrDefault();
+            }
+
+            string? finalDownloadUrl = null;
+
+            var baseUrls = mpd.Descendants(ns + "BaseURL").Select(u => u.Value.Trim()).ToList();
+            if (baseUrls.Count > 0)
+            {
+                finalDownloadUrl = BestUrl(baseUrls);
+            }
+            
+            if (finalDownloadUrl == null)
+            {
+
+                var matches = Regex.Matches(
+                    decodedManifest, 
+                    @"https?:\/\/[\w\-.~:?#[\]@!$&'()*+,;=%/]+",
+                    RegexOptions.Multiline);
+
+                foreach (var match in matches.ToList())
+                {
+                    var url = match.Value;
+                    if (!url.Contains("$Number$") &&
+                        !Regex.Match(url, @"\/\d+\.mp4").Success &&
+                        ValidMediaUrl(url))
+                    {
+                        finalDownloadUrl = url;
+                    }
+                }
+
+            }
+
+            if (finalDownloadUrl != null)
+            {
+                return await Helpers.DownloadFile(finalDownloadUrl, folder, onProgressUpdate);
+            }
 
         }
 

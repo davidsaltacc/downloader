@@ -20,16 +20,46 @@ namespace Downloader.Utils
     internal abstract class Helpers
     {
 
-        public static async Task<string> DownloadFile(string url, string folder)
+        public static async Task<string> DownloadFile(string url, string folder, Action<int>? progress = null, string? customFileName = null)
         {
 
-            using HttpClient client = new();
-            await using var stream = await client.GetStreamAsync(url);
-            var path = Path.Combine(folder, Path.GetFileName(new Uri(url).AbsolutePath));
+            var path = Path.Join(folder, customFileName ?? Path.GetFileName(new Uri(url).AbsolutePath));
             await using var file = File.Create(path);
-            await stream.CopyToAsync(file);
+            await DownloadFileToStream(url, file, progress);
             return path;
 
+        }
+
+        public static async Task DownloadFileToStream(string url, FileStream fStream, Action<int>? progress = null)
+        {
+            
+            using HttpClient client = new();
+
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+            var canShowProgress = totalBytes > 0 && progress != null;
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            
+            var buffer = new byte[8192];
+            long totalRead = 0;
+            int read;
+
+            while ((read = await stream.ReadAsync(buffer)) > 0)
+            {
+                await fStream.WriteAsync(buffer.AsMemory(0, read));
+                totalRead += read;
+
+                if (!canShowProgress)
+                {
+                    continue;
+                }
+                var percent = (int) (totalRead * 100L / totalBytes);
+                progress!(percent);
+            }
+            
         }
 
         public static void ExtractFileFromZipArchive(string archiveFile, string targetFile, string extractFolder)
@@ -101,15 +131,13 @@ namespace Downloader.Utils
             }
         }
 
-        public static void ApplyId3ToFile(string file, Song song, string comment = "")
+        public static async Task ApplyId3ToFile(string file, Song song, string comment = "")
         {
 
             Tag.DefaultVersion = 3;
             Tag.ForceDefaultVersion = true;
             var taggedFile = TagLib.File.Create(file,
-                Settings.AllCodecsAndMimetypes[
-                    Settings.AllCodecsAndFormats.Keys.First(s =>
-                        Settings.AllCodecsAndFormats[s] == file.Split(".").Last())], ReadStyle.Average);
+                Settings.AllCodecsAndMimetypes[await FFMpegApi.DetectAudioCodec(file)], ReadStyle.Average);
 
             if (song.Title.Length > 0)
             {
@@ -152,7 +180,7 @@ namespace Downloader.Utils
 
                 var cover = new AttachmentFrame
                 {
-                    Type = TagLib.PictureType.FrontCover,
+                    Type = PictureType.FrontCover,
                     Description = "Cover",
                     MimeType = System.Net.Mime.MediaTypeNames.Image.Jpeg,
                     Data = imageBytes
@@ -181,13 +209,15 @@ namespace Downloader.Utils
         }
 
         public static List<KeyValuePair<float, Song>> ScoreFoundSongs(List<Song> songs, Song originalSong,
-            bool allowTitleArtistOverlap)
+            bool allowTitleArtistOverlap, bool allowEarlyIndexBoost)
         {
             List<KeyValuePair<float, Song>> scored = [];
 
+            var i = -1;
             foreach (var song in songs)
             {
-
+                i++;
+                
                 var scoreBasic = 0f;
                 var maxBasic = 0f;
                 var scoreOverlap = 0f;
@@ -196,9 +226,12 @@ namespace Downloader.Utils
                 scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Title, [song.Title], s => s).Score / 100f;
                 maxBasic += 1;
 
-                scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [song.Album], s => s).Score / 100f *
-                              0.65f;
-                maxBasic += 0.65f;
+                if (originalSong.Album.Length > 0 && song.Album.Length > 0)
+                {
+                    scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [song.Album], s => s).Score / 100f *
+                                  0.65f;
+                    maxBasic += 0.65f;
+                }
 
                 if (song.DurationMs > 0)
                 {
@@ -208,8 +241,15 @@ namespace Downloader.Utils
 
                 scoreBasic += song.Artists.Select(artist =>
                                   FuzzySharp.Process.ExtractOne(artist, originalSong.Artists, s => s).Score).Sum() /
-                              (float)Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
+                              (float) Math.Max(song.Artists.Length, originalSong.Artists.Length) / 100f;
                 maxBasic += 1;
+
+                if (allowEarlyIndexBoost || originalSong.Album.Length == 0 || song.Album.Length == 0) // if not album, force boost high ranking results
+                {
+                    var x = Math.Clamp((1f - (float) i / songs.Count - 0.3f) / 0.6f, 0f, 1f); 
+                    scoreBasic += 0.25f * x * x * (3 - 2 * x); // simple smoothstep because it felt rude to fully cut off after a certain percentage
+                    maxBasic += 0.25f;
+                }
 
                 scoreOverlap += FuzzySharp.Fuzz.TokenSortRatio(String.Join(" ", song.Artists) + " " + song.Title,
                     String.Join(" ", originalSong.Artists) + " " + originalSong.Title);

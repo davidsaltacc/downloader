@@ -263,7 +263,7 @@ namespace Downloader.Api.Apis
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean, SearchFor.Songs),
                 Search(artistsNameJoined + " " + songData.Title + " ", SearchFor.Videos),
                 Search(artistsNameJoined + " " + songData.Title + " " + songData.Album, SearchFor.Songs)
-            ])).SelectMany(x => x).Distinct().ToList(), songData, false);
+            ])).SelectMany(x => x).Distinct().ToList(), songData, false, true);
 
             if (results.Count == 0)
             {
@@ -410,7 +410,7 @@ namespace Downloader.Api.Apis
                 )?.ToString() ?? songData.Title;
                 songData.Album = Helpers.NavigateJsonNode(
                     albumContent,
-                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content",
                     "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
                 )?.ToString() ?? "";
                 if (int.TryParse(Helpers.NavigateJsonNode(

@@ -125,7 +125,7 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
                 Search(artistsNamesClean + " " + songTitleClean + " " + albumTitleClean),
                 Search(artistsNameJoined + " " + originalSong.Title + " "),
                 Search(artistsNameJoined + " " + originalSong.Title + " " + originalSong.Album)
-            ])).SelectMany(x => x).Distinct().ToList(), originalSong, true);
+            ])).SelectMany(x => x).Distinct().ToList(), originalSong, true, false /* I don't trust soundcloud enough to set this to true */);
 
             if (results.Count == 0)
             {

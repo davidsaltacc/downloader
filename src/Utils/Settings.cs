@@ -16,7 +16,8 @@ public abstract class Settings
         { "mp3", "mp3" },
         { "opus", "opus" },
         { "vorbis", "ogg" },
-        { "wav", "wav" }
+        { "wav", "wav" },
+        { "original", "" }
     };
     
     public static readonly Dictionary<string, string> AllCodecsAndMimetypes = new Dictionary<string, string>{
@@ -26,13 +27,14 @@ public abstract class Settings
         { "mp3", "audio/mpeg" },
         { "opus", "audio/opus" },
         { "vorbis", "audio/ogg" },
-        { "wav", "audio/wav" }
+        { "wav", "audio/wav" },
+        { "original", "" }
     };
 
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());
     
-    public static string Codec = "aac";
-    public static readonly string DefaultCodec = "aac";
+    public static string Codec = "original";
+    public static readonly string DefaultCodec = "original";
 
     public static int Threads = 5;
     public static readonly int DefaultThreads = 5;

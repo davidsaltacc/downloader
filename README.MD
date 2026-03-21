@@ -4,7 +4,7 @@ A tool to download songs, playlists and albums from various platforms.
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
 
-Note: Not a single line of code was written by AI. (Except for some of the regex stuff. Writing some elvish runes is one of the few things it can be useful for) #fuckvibecoding 
+[![Written By a Human Being](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scriptex/written-by-a-human-being/main/badge.json)](https://github.com/scriptex/written-by-a-human-being)
 
 ## Notable features
 
@@ -42,7 +42,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 
 [^1]: Spotify is recommended as a playlist or album URL source to input into the downloader.
 
-[^2]: Tidal is recommended as the audio source that songs get fetched and downloaded from. Fetching Tidal playlist or songs is not currently supported.
+[^2]: Tidal is recommended as the audio source that songs get fetched and downloaded from. Fetching Tidal playlist or songs is not (yet) supported.
 
 [^3]: Lots of songs are reuploads of others and some are locked behind a paid account.
 
@@ -62,7 +62,9 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Support for other platforms?
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
 - Spotify playlist & song fetching without logging in (get TOTP secrets, only fallback to relying on spotDL ---> will improve issues with spotDL being ratelimited)
-- Progress updater when downloading files from tidal (direct downloading, currently not implemented, could be useful with lossles files)
+- Progress updater when downloading files from tidal (direct downloading, currently not implemented, could be useful with lossless files)
+- Downloading Tidal songs/albums/playlists
+- Playlist/Album track index in file name substitutes
 - ... more?
 
 ## Not planned

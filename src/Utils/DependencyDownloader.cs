@@ -40,20 +40,16 @@ namespace Downloader.Utils
             }
         }
 
-        public static async Task DownloadLatestFFmpeg()
+        public static async Task DownloadLatestFFmpeg(Action<int>? onProgressUpdate = null)
         {
-            var file = await Helpers.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip", ".");
+            var file = await Helpers.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip", ".", onProgressUpdate);
             Helpers.ExtractAllFilesFromZipArchive(file, ".");
-            Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f =>
+            Directory.GetFiles("./ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/bin").ToList().ForEach(f =>
             {
-                if (File.Exists(f))
-                {
-                    File.Delete(f);
-                }
-                File.Move(f, Path.Combine(".", Path.GetFileName(f)));
+                File.Move(f, Path.Combine(".", Path.GetFileName(f)), true);
             });
             File.Delete(file);
-            Directory.Delete("./ffmpeg-master-latest-win64-lgpl-shared", true);
+            Directory.Delete("./ffmpeg-n7.1-latest-win64-lgpl-shared-7.1", true);
         }
         
         public static async Task<bool> EnsureLatestDenoInstalled()
@@ -94,9 +90,9 @@ namespace Downloader.Utils
             }
         }
 
-        public static async Task DownloadLatestDeno()
+        public static async Task DownloadLatestDeno(Action<int>? onProgressUpdate = null)
         {
-            var file = await Helpers.DownloadFile("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", ".");
+            var file = await Helpers.DownloadFile("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", ".", onProgressUpdate);
             Helpers.ExtractFileFromZipArchive(file, "deno.exe", ".");
             File.Delete(file);
         }
@@ -146,9 +142,9 @@ namespace Downloader.Utils
 
         }
 
-        public static async Task DownloadLatestYtDlp()
+        public static async Task DownloadLatestYtDlp(Action<int>? onProgressUpdate = null)
         {
-            await Helpers.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".");
+            await Helpers.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".", onProgressUpdate);
         }
 
     }
