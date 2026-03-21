@@ -42,7 +42,7 @@ namespace Downloader.Utils
 
         public static async Task DownloadLatestFFmpeg()
         {
-            var file = await Helpers.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip", ".");
+            var file = await Helpers.DownloadFile("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip", ".");
             Helpers.ExtractAllFilesFromZipArchive(file, ".");
             Directory.GetFiles("./ffmpeg-master-latest-win64-lgpl-shared/bin").ToList().ForEach(f =>
             {
