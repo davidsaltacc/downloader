@@ -229,14 +229,14 @@ namespace Downloader.Utils
                 if (originalSong.Album.Length > 0 && song.Album.Length > 0)
                 {
                     scoreBasic += FuzzySharp.Process.ExtractOne(originalSong.Album, [song.Album], s => s).Score / 100f *
-                                  0.65f;
-                    maxBasic += 0.65f;
+                                  0.85f;
+                    maxBasic += 0.85f;
                 }
 
                 if (song.DurationMs > 0)
                 {
-                    scoreBasic += (15000 - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 15000f;
-                    maxBasic += 1f;
+                    scoreBasic += (30000f - Math.Abs(song.DurationMs - originalSong.DurationMs)) / 30000f * 0.8f;
+                    maxBasic += 0.8f;
                 }
 
                 scoreBasic += song.Artists.Select(artist =>
