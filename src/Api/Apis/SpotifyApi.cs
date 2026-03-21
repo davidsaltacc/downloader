@@ -329,12 +329,12 @@ namespace Downloader.Api.Apis
 
         public string GetName()
         {
-            return "Spotify";
+            return "Spotify (Legacy)";
         }
         
         public string GetId()
         {
-            return "spotify";
+            return "spotify-old";
         }
     }
 }
