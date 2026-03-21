@@ -150,15 +150,14 @@ namespace Downloader.Api.Apis
 
             var albumName = skipQueryingAlbum ? "" : Helpers.NavigateJsonNode(
                 albumContent,
-                "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content", 
                 "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text"
             )?.ToString();
             int? releaseYear = null;
             if (!skipQueryingAlbum && int.TryParse(Helpers.NavigateJsonNode(
                     albumContent,
-                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
-                    "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
-                    "subtitle", "runs", 2, "text"
+                    "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content", 
+                    "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "subtitle", "runs", 2, "text"
             )?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
             {
                 releaseYear = yearParsed;
@@ -415,7 +414,7 @@ namespace Downloader.Api.Apis
                 )?.ToString() ?? "";
                 if (int.TryParse(Helpers.NavigateJsonNode(
                         albumContent,
-                        "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "contents", 
+                        "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content", 
                         "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
                         "subtitle", "runs", 2, "text")?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
                 {
