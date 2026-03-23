@@ -146,6 +146,131 @@ namespace Downloader.Utils
         {
             await Helpers.DownloadFile("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", ".", onProgressUpdate);
         }
+        
+        private static async Task<JsonNode?> GetLatestEmbeddablePythonVersion()
+        {
+            
+            var response =
+                await MainWindow.HttpClient.GetAsync("https://www.python.org/ftp/python/index-windows-recent.json");
+
+            var content = await response.Content.ReadAsStringAsync();
+            var data = JsonNode.Parse(content);
+
+            if (data == null)
+            {
+                return null;
+            }
+
+            return data["versions"]?.AsArray().FirstOrDefault(v => v?["company"]?.ToString() == "PythonEmbed" && (v["install-for"]?.AsArray().Select(n => n?.ToString() ?? "").Contains("3-64") ?? false));
+
+        }
+        
+        public static async Task<bool> EnsureLatestEmbeddablePythonInstalled()
+        {
+            
+            var installed = false;
+            var latest = false;
+
+            try
+            {
+                using var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "./python/python.exe",
+                    WorkingDirectory = "./python",
+                    Arguments = "--version",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                if (process == null)
+                {
+                    return false;
+                }
+                
+                var version = await process.StandardOutput.ReadLineAsync();
+                await process.WaitForExitAsync();
+                installed = true;
+
+                var latestVersion = await GetLatestEmbeddablePythonVersion();
+
+                latest = latestVersion?["display-name"]?.ToString().Contains(version?.Trim() ?? "nothing!") ?? false;
+
+            } catch { }
+
+            return installed && latest;
+
+        }
+
+        public static async Task DownloadLatestEmbeddablePython(Action<int>? onProgressUpdate = null)
+        {
+            var latestVersion = await GetLatestEmbeddablePythonVersion();
+            var url = latestVersion?["url"]?.ToString();
+            if (url == null)
+            {
+                return;
+            }
+            
+            Directory.Delete("./python", true);
+            
+            // download python
+            var file = await Helpers.DownloadFile(url, ".", onProgressUpdate);
+            Helpers.ExtractAllFilesFromZipArchive(file, "./python");
+            File.Delete(file);
+
+            // download pip
+            await Helpers.DownloadFile("https://bootstrap.pypa.io/pip/get-pip.py", "./python");
+            await File.AppendAllTextAsync(Directory.GetFiles("./python", "*._pth")[0], "\nimport site");
+            
+            var process = new Process{
+                StartInfo = new ProcessStartInfo{
+                    FileName = "./python/python.exe",
+                    WorkingDirectory = "./python",
+                    Arguments = "-I get-pip.py",
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    Environment =
+                    {
+                        { "PYTHONHOME", "" },
+                        { "PYTHONPATH", "" },
+                        { "PYTHONNOUSERSITE", "1" }
+                    }
+                }
+            };
+
+            var processErr = "";
+            process.ErrorDataReceived += (_, a) => processErr += a.Data ?? "" + "\n";
+            process.Start();
+            process.BeginErrorReadLine();
+            await process.WaitForExitAsync();
+
+            if (processErr.Trim().Length > 0)
+            {
+                Logger.Log("pip installation stderr: " + processErr);
+            }
+
+        }
+
+        public static async Task DownloadPythonPackage(string packages)
+        {
+            
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "./python/python.exe",
+                WorkingDirectory = "./python",
+                Arguments = "-m pip install " + packages,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            
+            if (process == null)
+            {
+                return;
+            }
+
+            await process.WaitForExitAsync();
+            
+        }
 
     }
 }

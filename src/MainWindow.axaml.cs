@@ -266,6 +266,11 @@ namespace Downloader
                         SetStatusText("Downloading Deno");
                         await DependencyDownloader.DownloadLatestDeno(progress => SetStatusText("Downloading Deno - " + progress + "%"));
                     }
+                    //if (!await DependencyDownloader.EnsureLatestEmbeddablePythonInstalled())
+                    //{
+                    //    SetStatusText("Downloading Python");
+                    //    await DependencyDownloader.DownloadLatestEmbeddablePython(progress => SetStatusText("Downloading Python - " + progress + "%"));
+                    //}
 
                     Logger.Log("Initializing APIs");
                     
