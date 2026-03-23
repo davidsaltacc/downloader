@@ -18,7 +18,7 @@ Fully configurable, creates local playlist files, supports various audio formats
 - No login required on most platforms for downloading[^7]
 - High accuracy song search for downloading from other sites
 
-[^7]: Spotify does this by (planned!) fetching the latest secrets and getting a TOTP key from the web version, or getting an API key from spotDL (fallback once TOTP implemented). YouTube Music's API that it uses behind the Web UI requires no auth, SoundCloud has a free open API, Tidal is implemented over the unofficial Hi-Fi API by searching for a working instance.
+[^7]: Spotify does this by fetching the latest secrets and getting a TOTP key from the web version while impersonating a real browser, or getting an API key from spotDL (fallback if new version doesn't work). YouTube Music's API that it uses behind the Web UI requires no auth, SoundCloud has a free open API, Tidal is implemented over the unofficial Hi-Fi API by searching for a working instance.
 
 ## Disclaimer
 
@@ -61,12 +61,10 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Configurable Quality instead of best (downloading and saving)
 - Support for other platforms?
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
-- Spotify playlist & song fetching without logging in (get TOTP secrets, only fallback to relying on spotDL ---> will improve issues with spotDL being ratelimited)
-- Progress updater when downloading files from tidal (direct downloading, currently not implemented, could be useful with lossless files)
-- Downloading Tidal songs/albums/playlists
+- Downloading Tidal songs/albums/playlists directly
 - Playlist/Album track index in file name substitutes
 - ... more?
 
 ## Not planned
 
-- Downloading from Spotify directly. Reason: Spotify is a shitty company. (And no libraries or tools seem to fully support downloading from Spotify because Spotify is one of the most stubborn companies when it comes to restricting users from downloading or modding anything that they do not like.)
+- Downloading audio from Spotify directly. Reason: Spotify is a shitty company. (And no libraries or tools seem to fully support downloading from Spotify because Spotify is one of the most stubborn companies when it comes to restricting users from downloading or modding anything that they do not like.)

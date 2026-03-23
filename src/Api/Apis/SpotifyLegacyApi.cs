@@ -1,0 +1,340 @@
+﻿using Downloader.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Web;
+
+namespace Downloader.Api.Apis
+{
+    internal class SpotifyLegacyApi : ISongDataSource
+    {
+        
+        private SpotifyLegacyApi() {}
+
+        private static SpotifyLegacyApi? _instance = null;
+        public static SpotifyLegacyApi Instance
+        {
+            get
+            {
+                _instance ??= new SpotifyLegacyApi();
+                return _instance;
+            }
+        }
+
+        private string? _token = null;
+
+        private class TokenResponse
+        {
+            public required string token_type { get; set; }
+            public required string access_token { get; set; }
+        }
+
+        public async Task Init()
+        { 
+            var response = await MainWindow.HttpClient.GetAsync("https://raw.githubusercontent.com/spotDL/spotify-downloader/refs/heads/master/spotdl/utils/config.py");
+            // if you make it public, i hope you don't mind if i use it. thank you spotdl 
+
+            var clientId = "";
+            var clientSecret = "";
+
+            foreach (var line in (await response.Content.ReadAsStringAsync()).Split("\n")) {
+                var lineFormatted = line.ToLower().Replace(" ", "").Replace("\t", "");
+                if (lineFormatted.StartsWith("\"client_id\":\"")) {
+                    clientId = lineFormatted[..^2].Replace("\"client_id\":\"", "");
+                }
+                if (lineFormatted.StartsWith("\"client_secret\":\""))
+                {
+                    clientSecret = lineFormatted[..^2].Replace("\"client_secret\":\"", "");
+                }
+            }
+
+            var responseAuth = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage{
+                Method = HttpMethod.Post,
+                RequestUri = new Uri("https://accounts.spotify.com/api/token"),
+                Headers = {
+                    { "authorization", "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(clientId + ":" + clientSecret)) }
+                },
+                Content = new StringContent("grant_type=client_credentials", Encoding.UTF8, "application/x-www-form-urlencoded")
+            });
+
+            var tokenData = JsonSerializer.Deserialize<TokenResponse>(await responseAuth.Content.ReadAsStringAsync());
+
+            _token = tokenData?.token_type + " " + tokenData?.access_token;
+
+        }
+
+        private async Task<HttpResponseMessage> SendApiRequest(string endpoint, HttpMethod method,
+            Dictionary<string, string> parameters, HttpContent? content = null)
+        {
+
+            if (_token == null)
+            {
+                throw new Exception("Tried to make spotify API call before initializing and obtaining token");
+            }
+
+            var qs = HttpUtility.ParseQueryString("?");
+
+            foreach (var item in parameters)
+            {
+                qs.Set(item.Key, item.Value);
+            }
+
+            var uri = new Uri("https://api.spotify.com/v1" + endpoint + "?" + qs);
+
+            var response = await MainWindow.HttpClient.SendAsync(CreateMessage());
+
+            var retries = 0;
+            while (response.StatusCode == HttpStatusCode.TooManyRequests && retries < 5) {
+                if (response.Headers.RetryAfter == null)
+                {
+                    await Task.Delay(5000);
+                } else {
+                    await Task.Delay(response.Headers.RetryAfter.Delta.GetValueOrDefault(TimeSpan.FromSeconds(5)));
+                }
+                response = await MainWindow.HttpClient.SendAsync(CreateMessage());
+                retries++;
+            }
+
+            return response;
+            
+            HttpRequestMessage CreateMessage()
+            {
+                return new HttpRequestMessage
+                {
+                    Method = method,
+                    RequestUri = uri,
+                    Headers = {
+                        { "authorization", _token }
+                    },
+                    Content = content
+                };
+            }
+
+        }
+
+        private string? ExtractIdFromUrl(string url)
+        {
+            Uri.TryCreate(url, UriKind.Absolute, out var uriResult);
+            return uriResult?.AbsolutePath.Split("/")[2];
+        }
+
+        private class GetSongsResponse { 
+            public class Track
+            {
+                public class Album
+                {
+                    public class Image
+                    {
+                        public required string url { get; set; }
+                        public required int width { get; set; }
+                        public required int height { get; set; }
+                    }
+
+                    public required Image[] images { get; set; }
+                    public required string name { get; set; }
+                    public required string release_date { get; set; }
+                }
+                public class Artist
+                {
+                    public required string name { get; set; }
+                }
+
+                public required Album album { get; set; }
+                public required Artist[] artists { get; set; }
+                public required int disc_number { get; set; }
+                public required int duration_ms { get; set; }
+                public required string name { get; set; }
+                public required int track_number { get; set; }
+            }
+
+            public required Track[] tracks { get; set; }
+        }
+
+        public async Task<Song[]> GetSongsFromUrls(string[] urls)
+        {
+
+            var ids = new string?[urls.Length];
+            var i = 0;
+            foreach (var url in urls) {
+                ids[i] = ExtractIdFromUrl(url);
+                i++;
+            }
+
+            List<GetSongsResponse.Track> allTracks = [];
+
+            List<List<string?>> batches = [];
+
+            i = 0;
+            foreach (var id in ids) {
+                if (batches.Count == 0)
+                {
+                    batches.Add([]);
+                    batches[0].Add(id);
+                }
+                else if (batches[i].Count < 50)
+                {
+                    batches[i].Add(id);
+                } else
+                {
+                    batches.Add([]);
+                    i++;
+                    batches[i].Add(id);
+                }
+            }
+
+            foreach (var batch in batches)
+            {
+                var response = await SendApiRequest("/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("ids", String.Join(",", batch))]));
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode == HttpStatusCode.BadRequest &&
+                    content.Contains("base62", StringComparison.InvariantCultureIgnoreCase)) // song does not exist
+                {
+                    continue;
+                }
+                allTracks.AddRange(JsonSerializer.Deserialize<GetSongsResponse>(content)?.tracks ?? []);
+            }
+
+            var songs = new Song[allTracks.Count];
+
+            i = 0;
+            foreach (var songData in allTracks)
+            {
+                songs[i] = new Song(
+                    songData.album.name,
+                    songData.artists.Select(artist => artist.name).ToArray(),
+                    songData.name,
+                    songData.duration_ms,
+                    songData.track_number,
+                    songData.disc_number,
+                    int.Parse(songData.album.release_date.Split("-")[0]),
+                    songData.album.images[0].url,
+                    urls[i],
+                    GetId()
+                );
+                i++;
+            }
+
+            return songs;
+        }
+
+        private class GetSongsInAlbumResponse {
+            public class Track
+            {
+                public class ExternalUrls
+                {
+                    public required string spotify { get; set; }
+                }
+
+                public required ExternalUrls external_urls { get; set; }
+            }
+
+            public required string? next { get; set; }
+            public required Track[] items { get; set; }
+        }
+
+        public async Task<Song[]> GetSongsInAlbum(string albumUrl)
+        {
+            List<string> urls = [];
+
+            await Request(0);
+            return await GetSongsFromUrls(urls.ToArray());
+
+            async Task Request(int offset)
+            {
+                var songsData = JsonSerializer.Deserialize<GetSongsInAlbumResponse>(await (await SendApiRequest("/albums/" + ExtractIdFromUrl(albumUrl) + "/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("limit", "50"), new KeyValuePair<string, string>("offset", offset.ToString())]))).Content.ReadAsStringAsync());
+                if (songsData != null)
+                {
+                    urls.AddRange(songsData.items.Select(track => track.external_urls.spotify));
+
+                    if (songsData.next != null)
+                    {
+                        await Request(offset + 50);
+                    }
+                }
+            }
+        }
+
+        private class GetSongsInPlaylistResponse
+        {
+            public class PlaylistTrack
+            {
+                public class Track
+                {
+                    public class ExternalUrls
+                    {
+                        public required string spotify { get; set; }
+                    }
+
+                    public required ExternalUrls external_urls { get; set; }
+                }
+
+                public required Track track { get; set; }
+            }
+
+            public required string? next { get; set; }
+            public required PlaylistTrack[] items { get; set; }
+        }
+
+        public async Task<Song[]> GetSongsInPlaylist(string playlistUrl)
+        {
+            List<string> urls = [];
+
+            await Request(0);
+
+            return await GetSongsFromUrls(urls.ToArray());
+
+            async Task Request(int offset)
+            {
+                var songsData = JsonSerializer.Deserialize<GetSongsInPlaylistResponse>(await (await SendApiRequest("/playlists/" + ExtractIdFromUrl(playlistUrl) + "/tracks", HttpMethod.Get, new Dictionary<string, string>([new KeyValuePair<string, string>("limit", "50"), new KeyValuePair<string, string>("offset", offset.ToString())]))).Content.ReadAsStringAsync());
+                
+                if (songsData != null)
+                {
+                    urls.AddRange(songsData.items.Select(playlistTrack => playlistTrack.track.external_urls.spotify));
+
+                    if (songsData.next != null)
+                    {
+                        await Request(offset + 50);
+                    }
+                }
+            }
+        }
+
+        public async Task<Song[]> GetSongs(string url)
+        {
+            var uri = new Uri(url);
+            if (uri.AbsolutePath.StartsWith("/track"))
+            {
+                return await GetSongsFromUrls([ url ]);
+            } 
+            if (uri.AbsolutePath.StartsWith("/album"))
+            {
+                return await GetSongsInAlbum(url);
+            }
+            if (uri.AbsolutePath.StartsWith("/playlist"))
+            {
+                return await GetSongsInPlaylist(url);
+            }
+            return [];
+        }
+
+        public bool UrlPartOfPlatform(string url)
+        {
+            return new Uri(url).Host.Contains("open.spotify", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public string GetName()
+        {
+            return "Spotify (Legacy)";
+        }
+        
+        public string GetId()
+        {
+            return "spotify-old";
+        }
+    }
+}

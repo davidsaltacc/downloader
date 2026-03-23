@@ -9,7 +9,7 @@ public abstract class Settings
 {
 
     // codec name -> container file ending
-    public static readonly Dictionary<string, string> AllCodecsAndFormats = new Dictionary<string, string>{
+    public static readonly Dictionary<string, string> AllCodecsAndFormats = new (){
         { "aac", "m4a" },
         { "alac", "m4a" },
         { "flac", "flac" },
@@ -20,7 +20,7 @@ public abstract class Settings
         { "original", "" }
     };
     
-    public static readonly Dictionary<string, string> AllCodecsAndMimetypes = new Dictionary<string, string>{
+    public static readonly Dictionary<string, string> AllCodecsAndMimetypes = new (){
         { "aac", "audio/mp4" },
         { "alac", "audio/mp4" },
         { "flac", "audio/flac" },

@@ -35,7 +35,7 @@ public class TlsSession : IDisposable
         public required string RequestMethod { get; set; }
         public required string RequestUrl { get; set; }
         public string? RequestBody { get; set; } = null;
-        public Dictionary<string, string>? Headers { get; set; } = null;
+        public Dictionary<string, string> Headers { get; set; } = new ();
         public string? TlsClientIdentifier { get; set; } = null;
         public bool? RandomTLSExtensionOrder { get; set; } = null;
         public bool? FollowRedirects { get; set; } = null;
