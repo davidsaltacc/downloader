@@ -26,6 +26,7 @@ $buildpath = $buildTarget
 
 if ($buildTarget) {
     Copy-Item "icons\icon.ico" -Destination "$buildTarget"
+    Copy-Item "bundled\*" -Destination "$buildTarget"
 }
 
 if ($isPublish) {
@@ -34,12 +35,7 @@ if ($isPublish) {
     $pdbFile = (Join-Path -Path ${buildpath} -ChildPath "${exename}.pdb")
     if (Test-Path $pdbFile) { Remove-Item $pdbFile -Force }
 
-}
-
-if ($isPublish) {
-
     # make portable
-    
     Compress-Archive -Path "$buildpath\*" -DestinationPath "$name Portable.zip" -CompressionLevel Optimal -Force
 
     # make installer
