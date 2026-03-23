@@ -14,10 +14,11 @@ public interface ISongApi
 
     public static readonly List<ISongApi> AllApis = [
         SpotifyApi.Instance, 
-        YoutubeMusicApi.Instance,
-        SoundCloudApi.Instance,
+        SpotifyLegacyApi.Instance, 
+        TidalApi.InstanceNotLossless,
         TidalApi.InstanceLossless,
-        TidalApi.InstanceNotLossless
+        YoutubeMusicApi.Instance,
+        SoundCloudApi.Instance
     ];
 
     public static ISongApi? GetApiById(string id)
