@@ -19,8 +19,8 @@ namespace Downloader.Utils
         public string[] Artists = artists;
         public string Title = title;
         public int DurationMs = durationMs;
-        public int IndexOnDisk = indexOnDisk;
-        public int DiskIndex = diskIndex;
+        public int IndexOnDisk = indexOnDisk; // start at 1
+        public int DiskIndex = diskIndex; // start at 1
         public int ReleaseYear = releaseYear;
         public string ImageUrl = imageUrl;
         public string SongUrl = songUrl;

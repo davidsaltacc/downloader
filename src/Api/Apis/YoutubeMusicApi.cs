@@ -183,7 +183,7 @@ namespace Downloader.Api.Apis
                 }
             }
             
-            return new Song(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc ?? -1, 0, releaseYear ?? -1, thumbnail, url, GetId());
+            return new Song(albumName ?? "", [ author ?? "" ], title ?? videoId, (int) duration.TotalMilliseconds, indexOnDisc ?? -1, 1, releaseYear ?? -1, thumbnail, url, GetId());
 
         }
 
