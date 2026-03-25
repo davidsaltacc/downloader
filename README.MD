@@ -1,5 +1,7 @@
 ﻿# Downloader (for Music)
 
+(update 24.03.2026 - i am a dumbass, i thought i had changed the repository to public since the beginning. here i was sending 404 links to people... anyway, its still under development before a stable version can be made and released. when will that be? no clue! i am aiming for april/early june to have a stable fully working release with an installer)
+
 A tool to download songs, playlists and albums from various platforms. 
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
