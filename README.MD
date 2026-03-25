@@ -18,7 +18,7 @@ Fully configurable, creates local playlist files, supports various audio formats
 - No login required on most platforms for downloading[^7]
 - High accuracy song search for downloading from other sites
 
-[^7]: Spotify does this by fetching the latest secrets and getting a TOTP key from the web version while impersonating a real browser, or getting an API key from spotDL (fallback if new version doesn't work). YouTube Music's API that it uses behind the Web UI requires no auth, SoundCloud has a free open API, Tidal is implemented over the unofficial Hi-Fi API by searching for a working instance.
+[^7]: Spotify does this by fetching the latest secrets and getting a TOTP key from the web version while impersonating a real browser. YouTube Music's API that it uses behind the Web UI requires no auth, SoundCloud has a free open API, Tidal is implemented over the unofficial Hi-Fi API by searching for a working instance.
 
 ## Disclaimer
 
@@ -63,6 +63,8 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
 - Downloading Tidal songs/albums/playlists directly
 - Playlist/Album track index in file name substitutes
+- Direct in-app search functionality
+- UI restructuring and user-friendliness
 - ... more?
 
 ## Not planned

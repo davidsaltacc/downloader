@@ -251,7 +251,7 @@ public class SpotifyApi : ISongDataSource
         return new Uri(url).Host.Contains("open.spotify", StringComparison.OrdinalIgnoreCase);
     }
 
-    public JsonNode? SendQueryApiRequest(string opName, object variables_)
+    public JsonNode? SendQueryApiRequest(string opName, object variables)
     {
         
         if (_session == null)
@@ -268,7 +268,7 @@ public class SpotifyApi : ISongDataSource
                     sha256Hash = _hashes[opName]
                 }
             },
-            variables = variables_
+            variables
         };
         
         return JsonNode.Parse(_session.SendRequest(new TlsSession.TlsRequest
@@ -300,8 +300,24 @@ public class SpotifyApi : ISongDataSource
             {
                 continue;
             }
-            
-            
+
+            var discIndex = 1;
+            var onDiscIndex = 1;
+
+            foreach (var track in Helpers.NavigateJsonNode(data, "data", "trackUnion", "albumOfTrack", "tracks", "items")?.AsArray() ?? [])
+            {
+                if (Int32.Parse(track?["trackNumber"]?.ToString() ?? (onDiscIndex + 1).ToString()) < onDiscIndex)
+                {
+                    discIndex += 1;
+                    onDiscIndex = 0;
+                }
+                onDiscIndex += 1;
+                if (track?["uri"]?.ToString() ==
+                    Helpers.NavigateJsonNode(data, "data", "trackUnion", "uri")?.ToString())
+                {
+                    break;
+                }
+            }
             
             songs.Add(
                 new Song(
@@ -314,9 +330,9 @@ public class SpotifyApi : ISongDataSource
                     Helpers.NavigateJsonNode(data, "data", "trackUnion", "name")?.ToString() ?? "",
                     Int32.Parse(Helpers.NavigateJsonNode(data, "data", "trackUnion", "duration", "totalMilliseconds")?.ToString() ?? "-1"),
                     Int32.Parse(Helpers.NavigateJsonNode(data, "data", "trackUnion", "trackNumber")?.ToString() ?? "-1"),
-                    discIndex, // go over $.data.trackUnion.albumOfTrack.tracks.items to see how many times it resets to 1 before this song to get disc index)
-                    Int32.Parse(Helpers.NavigateJsonNode(data, "data", "trackUnion", "albumOfTrack", "date", "year")?.ToString() ?? "-1"),
-                    Helpers.NavigateJsonNode(data, "data", "trackUnion", "albumOfTrack", "coverArt", "sources")?.ToString() ?? "", // sources.something, fuck do i know
+                    discIndex, 
+                    DateTime.TryParse(Helpers.NavigateJsonNode(data, "data", "trackUnion", "albumOfTrack", "date", "year")?.ToString(), out var time) ? time.Year : -1,
+                    Helpers.NavigateJsonNode(data, "data", "trackUnion", "albumOfTrack", "coverArt", "sources")?.AsArray().OrderByDescending(s => Int32.Parse(s?["width"]?.ToString() ?? "0")).First()?["url"]?.ToString() ?? "",
                     url,
                     GetId()
                 )
@@ -325,19 +341,123 @@ public class SpotifyApi : ISongDataSource
 
         return songs.ToArray();
     }
+    
+    private (JsonArray, JsonNode, int) GetAlbumSongs(string id, int offset, int limit)
+    {
+        var response = SendQueryApiRequest("getAlbum", new
+        {
+            uri = "spotify:album:" + id,
+            offset,
+            limit
+        });
+        return (Helpers.NavigateJsonNode(response, "data", "albumUnion", "tracksV2", "items")?.AsArray() ?? [],
+            Helpers.NavigateJsonNode(response, "data", "albumUnion")!,
+            Int32.Parse(Helpers.NavigateJsonNode(response, "data", "albumUnion", "tracksV2", "totalCount")?.ToString() ?? limit.ToString())); 
+    }
 
     private async Task<Song[]> GetSongsInAlbum(string albumUrl)
     {
-        throw new NotImplementedException();
+
+        List<JsonNode?> allSongs = [];
+        var id = albumUrl.Split("/").Last(p => p.Length > 1);
+        
+        var (arr, data, total) = GetAlbumSongs(id, 0, 100); 
+
+        allSongs.AddRange(arr);
+        if (total > 100)
+        {
+            var offset = 100;
+            var received = 100;
+            while (received < total)
+            {
+                var (arr2, _, _) = GetAlbumSongs(id, offset, 100);
+                allSongs.AddRange(arr2);
+                received += arr2.Count;
+                offset += 100;
+            }
+        }
+
+        var result = allSongs.Select(
+            s => new Song(
+                data["name"]?.ToString() ?? "",
+                new List<string?>(
+                    Helpers.NavigateJsonNode(s, "track", "artists", "items")?.AsArray().Select(a => a?["profile"]?["name"]?.ToString()) ?? []
+                ).Where(s2 => s2 != null).ToArray()!,
+                Helpers.NavigateJsonNode(s, "track", "name")?.ToString() ?? "",
+                Int32.Parse(Helpers.NavigateJsonNode(s, "track", "duration", "totalMilliseconds")?.ToString() ?? "-1"),
+                Int32.Parse(Helpers.NavigateJsonNode(s, "track", "trackNumber")?.ToString() ?? "-1"),
+                Int32.Parse(Helpers.NavigateJsonNode(s, "track", "discNumber")?.ToString() ?? "-1"),
+                DateTime.TryParse(Helpers.NavigateJsonNode(data, "date", "isoString")?.ToString(), out var time) ? time.Year : -1,
+                Helpers.NavigateJsonNode(data, "coverArt", "sources")?.AsArray().OrderByDescending(s2 => Int32.Parse(s2?["width"]?.ToString() ?? "0")).First()?["url"]?.ToString() ?? "",
+                "https://open.spotify.com/track/" + (Helpers.NavigateJsonNode(s, "track", "uri")?.ToString() ?? "").Split(":")[2],
+                GetId()
+            )
+        ).ToArray();
+        return result;
+
+    }
+    
+    private (JsonArray, int) GetPlaylistData(string id, int offset, int limit)
+    {
+        var response = SendQueryApiRequest("fetchPlaylist", new
+        {
+            uri = "spotify:playlist:" + id,
+            offset,
+            limit,
+            enableWatchFeedEntrypoint = false
+        });
+        return (Helpers.NavigateJsonNode(response, "data", "playlistV2", "content", "items")?.AsArray() ?? [],
+            Int32.Parse(Helpers.NavigateJsonNode(response, "data", "playlistV2", "content", "totalCount")?.ToString() ?? limit.ToString())); 
     }
 
     private async Task<Song[]> GetSongsInPlaylist(string playlistUrl)
     {
-        throw new NotImplementedException();
+
+        List<JsonNode?> allSongs = [];
+        var id = playlistUrl.Split("/").Last(p => p.Length > 1);
+        
+        var (arr, total) = GetPlaylistData(id, 0, 100); 
+
+        allSongs.AddRange(arr);
+        if (total > 100)
+        {
+            var offset = 100;
+            var received = 100;
+            while (received < total)
+            {
+                var (arr2, _) = GetPlaylistData(id, offset, 100);
+                allSongs.AddRange(arr2);
+                received += arr2.Count;
+                offset += 100;
+            }
+        }
+        
+        var result = allSongs.Select(
+            s =>
+            {
+                var (_, albumData, _) = GetAlbumSongs((Helpers.NavigateJsonNode(s, "itemV2", "data", "albumOfTrack", "uri")?.ToString() ?? "").Split(":")[2], 0, 1);
+                return new Song(
+                    Helpers.NavigateJsonNode(s, "itemV2", "data", "albumOfTrack", "name")?.ToString() ?? "",
+                    new List<string?>(Helpers.NavigateJsonNode(s, "itemV2", "data", "artists", "items")?.AsArray().Select(a => a?["profile"]?["name"]?.ToString()) ?? []
+                    ).Where(s2 => s2 != null).ToArray()!,
+                    Helpers.NavigateJsonNode(s, "itemV2", "data", "name")?.ToString() ?? "",
+                    Int32.Parse(Helpers.NavigateJsonNode(s, "itemV2", "data", "trackDuration", "totalMilliseconds")?.ToString() ?? "-1"),
+                    Int32.Parse(Helpers.NavigateJsonNode(s, "itemV2", "data", "trackNumber")?.ToString() ?? "-1"),
+                    Int32.Parse(Helpers.NavigateJsonNode(s, "itemV2", "data", "discNumber")?.ToString() ?? "-1"),
+                    DateTime.TryParse(Helpers.NavigateJsonNode(albumData, "date", "isoString")?.ToString(), out var time) ? time.Year : -1,
+                    Helpers.NavigateJsonNode(s, "itemV2", "data", "albumOfTrack", "coverArt", "sources")?.AsArray().OrderByDescending(s2 => Int32.Parse(s2?["width"]?.ToString() ?? "0")).First()?["url"]?.ToString() ?? "",
+                    "https://open.spotify.com/track/" + (Helpers.NavigateJsonNode(s, "itemV2", "data", "uri")?.ToString() ?? "").Split(":")[2],
+                    GetId()
+                );
+            }
+        ).ToArray();
+        return result;
+
     }
 
     public async Task<Song[]> GetSongs(string url)
     {
+        url = url.Split("?")[0];
         var uri = new Uri(url);
         if (uri.AbsolutePath.StartsWith("/track"))
         {
