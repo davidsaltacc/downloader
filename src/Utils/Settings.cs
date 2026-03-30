@@ -33,28 +33,31 @@ public abstract class Settings
 
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());
     
-    public static string Codec = "original";
     public static readonly string DefaultCodec = "original";
+    public static string Codec = DefaultCodec;
 
-    public static int Threads = 5;
     public static readonly int DefaultThreads = 5;
+    public static int Threads = DefaultThreads;
 
-    public static string SongAudioSource = TidalApi.InstanceNotLossless.GetId();
     public static readonly string DefaultSongAudioSource = TidalApi.InstanceNotLossless.GetId();
+    public static string SongAudioSource = DefaultSongAudioSource;
 
-    public static bool CreatePlaylistFile = true;
     public static readonly bool DefaultCreatePlaylistFile = true;
+    public static bool CreatePlaylistFile = DefaultCreatePlaylistFile;
     
-    public static string PlaylistFileName = "! playlist";
     public static readonly string DefaultPlaylistFileName = "! playlist";
+    public static string PlaylistFileName = DefaultPlaylistFileName;
     
-    public static string SongFileName = "%allartists% - %title%";
     public static readonly string DefaultSongFileName = "%allartists% - %title%";
+    public static string SongFileName = DefaultSongFileName;
     
-    public static string DestinationFolder = "C:/Users/" + Environment.UserName + "/Music";
     public static readonly string DefaultDestinationFolder = "C:/Users/" + Environment.UserName + "/Music";
+    public static string DestinationFolder = DefaultDestinationFolder;
     
-    public static string DestinationSubfolder = "%artist%/%album%";
     public static readonly string DefaultDestinationSubfolder = "%artist%/%album%";
+    public static string DestinationSubfolder = DefaultDestinationSubfolder;
+    
+    public static readonly string DefaultPlaylistFolderName = "Downloaded Playlist - %hash%";
+    public static string PlaylistFolderName = DefaultPlaylistFolderName;
 
 }

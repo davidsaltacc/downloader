@@ -137,7 +137,7 @@
 						    </DockPanel>
 						    <Border Margin="0,10,0,0"></Border>
 						    
-						    <TextBlock TextWrapping="Wrap" FontSize="12">The folder structure created inside the destination folder. Useful for automatic artist/album sorting. Supports Substitutions (read more below).</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The folder structure created inside the destination folder. Useful for automatic artist/album sorting. Supports Substitutions (read more below). Only will be applied to albums and singular songs, not playlists.</TextBlock>
 						    <Border Margin="0,5,0,0"></Border>
 						    <DockPanel LastChildFill="True">
 							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
@@ -148,6 +148,17 @@
 							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="DestinationSubfolderTextBox"></TextBox>
 						    </DockPanel>
 						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">The folder name for playlists. Supports Substitutions (only %hash% - read more below). Only will be applied to playlists, not albums/songs.</TextBlock>
+						    <Border Margin="0,5,0,0"></Border>
+						    <DockPanel LastChildFill="True">
+							    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
+								    Playlist Folder Name
+							    </TextBlock>
+							    <Border DockPanel.Dock="Left" Margin="10,0,0,0"></Border>
+							    
+							    <TextBox IsEnabled="{Binding !isBusy}" VerticalAlignment="Center" x:Name="PlaylistFolderNameTextBox"></TextBox>
+						    </DockPanel>
+						    
 						    <Border Margin="0,20,0,0"></Border>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">Substitutions are placeholders for song/album/artist metadata that can be used, for example %artist% later gets replaced with the actual artist's name. All supported substitutions:</TextBlock>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%artist% - The first (and usually main) artist of the album/song.</TextBlock>
@@ -155,6 +166,7 @@
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%title% - The title of the song.</TextBlock>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%album% - The name of the album.</TextBlock>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%year% - The release year of the song/album.</TextBlock>
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%random% - An essentially random short string (to avoid file name collisions with, for example, playlist folders).</TextBlock>
 						    
 					    </StackPanel>
 				    </ScrollViewer>

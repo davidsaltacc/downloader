@@ -44,10 +44,15 @@ public class TidalApi : ISongAudioSource
         }
     }
 
-    private static string? _apiUrl;
+    private static readonly List<string> _blacklistedApis = [
+    ];
+    private List<string> _apiUrls;
 
     public async Task Init()
     {
+
+        _apiUrls = [];
+
         string[] apiUrlLists =
             [ "https://tidal-uptime.jiffy-puffs-1j.workers.dev/", "https://tidal-uptime.props-76styles.workers.dev/" ];
 
@@ -81,14 +86,32 @@ public class TidalApi : ISongAudioSource
 
                 var apiUrlData = JsonNode.Parse(apiUrlJson);
                 var apiUrl = apiUrlData?["url"]?.ToString();
+                var version = apiUrlData?["version"]?.ToString();
+                var versionMaj = version?.Split(".")[0];
+                var versionMin = version?.Split(".")[1];
+
+                if ((versionMaj == "2" && Int32.Parse(versionMin ?? "0") < 7) || Int32.Parse(versionMaj ?? "0") < 2) // only versions 2.7 and above
+                {
+                    continue;
+                }
 
                 if (apiUrl == null)
                 {
                     continue;
                 }
+
+                if (_blacklistedApis.FirstOrDefault(part => apiUrl.Contains(part)) != null)
+                {
+                    return;
+                }
                 
                 using var cts = new CancellationTokenSource();
                 cts.CancelAfter(TimeSpan.FromSeconds(20));
+
+                if (!new Uri(apiUrl).Host.EndsWith("monochrome.tf")) // only allow monochrome instances as they are the most maintained and therefore less prone to issues
+                {
+                    continue;
+                }
                 
                 var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
                 {
@@ -101,44 +124,72 @@ public class TidalApi : ISongAudioSource
                     continue;
                 }
 
+                if (await ApiRequest("/search/?s=" + HttpUtility.UrlEncode("song"), apiUrl) == null)
+                {
+                    continue;
+                }
+
                 if (JsonNode.Parse(await response.Content.ReadAsStringAsync())?["data"]?["assetPresentation"]?
                         .ToString() != "FULL") // downloading not supported
                 {
                     continue;
                 }
                 
-                _apiUrl = apiUrl;
-                return;
+                _apiUrls.Add(apiUrl);
             }
         }
-
-        _apiUrl = null;
         
     }
 
-    private async Task<JsonNode?> ApiRequest(string endpoint)
+    private static readonly Random _random = new Random();
+
+    private async Task<JsonNode?> ApiRequest(string endpoint, string? fixedApiUrl = null, int maxRetries = 15)
     {
 
-        if (_apiUrl == null)
+        async Task<JsonNode?> GetResponse()
         {
-            return null;
-        }
+            if (_apiUrls.Count == 0 && fixedApiUrl == null)
+            {
+                return null;
+            }
+
+            var apiUrl = fixedApiUrl ?? _apiUrls[_random.Next(0, _apiUrls.Count)]; // cycle to avoid rate limits 
         
-        var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
-        {
-            Method = HttpMethod.Get,
-            RequestUri = new Uri(_apiUrl + endpoint)
-        });
+            var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri(apiUrl + endpoint)
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.Log("Noticed code " + response.StatusCode + " on api url " + apiUrl + endpoint);
+                return null;
+            }
         
-        var content = await response.Content.ReadAsStringAsync();
-        try
-        {
-            return JsonNode.Parse(content);
+            var content = await response.Content.ReadAsStringAsync();
+            try
+            {
+                return JsonNode.Parse(content);
+            }
+            catch
+            {
+                return null;
+            }
         }
-        catch
+
+        var response = await GetResponse();
+        if (response == null)
         {
-            return null;
+            var retries = 0;
+            while (response == null && retries < maxRetries) {
+                await Task.Delay(5000);
+                response = await GetResponse();
+                retries++;
+            }
         }
+
+        return response;
 
     }
 
@@ -185,14 +236,19 @@ public class TidalApi : ISongAudioSource
 
         var response = await ApiRequest("/search/?s=" + HttpUtility.UrlEncode(query));
 
-        var songs = response?["data"]?["items"];
+        if (response == null)
+        {
+            return [];
+        }
+
+        var songs = response["data"]?["items"];
 
         if (songs == null)
         {
             return [];
         }
 
-        return (await Task.WhenAll(songs.AsArray().Select(s => ParseSong(s)))).Where(s => s != null).Select(s => (Song) s).ToList();
+        return (await Task.WhenAll(songs.AsArray().Select(s => ParseSong(s)))).Where(s => s != null).Select(s => s!).ToList();
 
     }
 
@@ -245,16 +301,20 @@ public class TidalApi : ISongAudioSource
         
     }
 
-    public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
+    public async Task<string?> DownloadSong(Song? song, string folder, Action<int> onProgressUpdate)
     {
 
+        if (song == null)
+        {
+            return null;
+        }
         if (!UrlPartOfPlatform(song.SongUrl))
         {
             throw new Exception("Tried to download non-tidal song over tidal api (this should not happen)");
         }
 
-        string trackId = song.SongUrl.Split("/track/")[1];
-        string quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : "HIGH";
+        var trackId = song.SongUrl.Split("/track/")[1];
+        var quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : "HIGH";
 
         var response = await ApiRequest("/track/?id=" + trackId + "&quality=" + quality);
         

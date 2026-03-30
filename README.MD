@@ -67,6 +67,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Playlist/Album track index in file name substitutes
 - Direct in-app search functionality
 - UI restructuring and user-friendliness
+- Per-API settings (auth, quality, ...)
 - ... more?
 
 ## Not planned

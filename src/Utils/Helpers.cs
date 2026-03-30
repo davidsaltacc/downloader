@@ -271,18 +271,39 @@ namespace Downloader.Utils
         {
             return Regex.Replace(oldName, @"[\\\/:\*\?""<>\|\x00-\x1F]", "_");
         }
-
-        public static string InsertSubstitutionsForPath(string baseString, Song song)
+        
+        public static string SafeFolderName(string oldName)
         {
+            return Regex.Replace(oldName, @"[:\*\?""<>\|\x00-\x1F]", "_");
+        }
+
+        public static string InsertSubstitutionsForPath(string baseString, Song? song, bool isPlaylist = false)
+        {
+                
+            Dictionary<string, string> replacements;
             
-            var replacements = new Dictionary<string, string>
+            if (!isPlaylist && song == null)
             {
-                { "artist", (song.Artists.Length == 0 || song.Artists[0].Length == 0) ? "Unknown Artist" : song.Artists[0] },
-                { "allartists", (song.Artists.Length == 0 || song.Artists[0].Length == 0) ? "Unknown Artist" : String.Join(", ", song.Artists) },
-                { "title", song.Title.Length == 0 ? "Unknown Title" : song.Title },
-                { "album", song.Album.Length == 0 ? "Unknown Album" : song.Album },
-                { "year", song.ReleaseYear == -1 ? "Unknown Year" : song.ReleaseYear.ToString() }
-            };
+                return baseString;
+            }
+            
+            if (isPlaylist)
+            {
+                replacements = new Dictionary<string, string>{
+                    { "random", MakeRandom() }
+                };
+            }
+            else
+            {
+                replacements = new Dictionary<string, string>{
+                    { "artist", song!.Artists.Length == 0 || song.Artists[0].Length == 0 ? "Unknown Artist" : song.Artists[0] },
+                    { "allartists", song.Artists.Length == 0 || song.Artists[0].Length == 0 ? "Unknown Artists" : String.Join(", ", song.Artists) },
+                    { "title", song.Title.Length == 0 ? "Unknown Title" : song.Title },
+                    { "album", song.Album.Length == 0 ? "Unknown Album" : song.Album },
+                    { "year", song.ReleaseYear == -1 ? "Unknown Year" : song.ReleaseYear.ToString() },
+                    { "random", MakeRandom() }
+                };
+            }
             
             return Regex.Replace(baseString, @"%(?:[^%]|%%)+%", match =>
             {
@@ -290,6 +311,13 @@ namespace Downloader.Utils
                 content = content.Replace("%%", "%");
                 return SafeFileName(replacements.GetValueOrDefault(content, content));
             });
+
+            string MakeRandom()
+            {
+                var b = new byte[4];
+                new Random().NextBytes(b);
+                return Convert.ToHexString(b);
+            }
         }
     }
     

@@ -92,6 +92,13 @@ namespace Downloader
                 Settings.DestinationFolder = DestinationFolderTextBox.Text ?? Settings.DefaultDestinationFolder;
                 Logger.Log("Set destination folder to " + Settings.DestinationFolder);
             };
+
+            PlaylistFolderNameTextBox.Text = Settings.PlaylistFolderName;
+            PlaylistFolderNameTextBox.TextChanged += (_, __) =>
+            {
+                Settings.PlaylistFolderName = PlaylistFolderNameTextBox.Text ?? Settings.DefaultPlaylistFolderName;
+                Logger.Log("Set playlist folder name to " + Settings.PlaylistFolderName);
+            };
             
             DestinationFolderSelectButton.Click += async (_, __) =>
             {
@@ -169,9 +176,9 @@ namespace Downloader
                 {
                     if (ex is not OperationCanceledException)
                     {
-                        Debug.WriteLine(ex);
-                        Logger.Log("Error occured while processing");
-                        Logger.Log(ex.ToString());
+                        Logger.Log("Error occured while processing: " + ex.Message);
+                        Logger.Log(ex.StackTrace ?? "");
+                        Logger.Log("-------");
                         SetStatusText("Error occurred");
                         Directory.Delete("./downloaded", true);
                     }
@@ -288,7 +295,7 @@ namespace Downloader
                     await dataSource.Init();
                     await audioSource.Init();
 
-                    SetStatusText("Fetching songs (It is normal for this to take a while)");
+                    SetStatusText("Fetching songs");
                     Logger.Log("Fetching songs");
                     
                     var songs = await dataSource.GetSongs(url);
@@ -327,7 +334,6 @@ namespace Downloader
                                 Logger.Log("Error occured while processing song: " + exc.Message);
                                 Logger.Log(exc.StackTrace ?? "");
                                 Logger.Log("-------");
-                                throw exc;
                             }
                         }
                         
@@ -364,8 +370,9 @@ namespace Downloader
 
                     SetStatusText("Done");
                     Logger.Log("Finished download");
-                    
-                    string finalFolder = Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, songs[0]));
+
+                    var mixed = ContainsMixedAlbums(songs);
+                    var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], mixed)));
                     Directory.CreateDirectory(finalFolder); // create all folders leading up to the final folder
                     Directory.Delete(finalFolder, true); // delete last folder for moving files - i do this because i don't think .Move creates all folders leading up to the final folder 
                     Directory.Move("./downloaded/", finalFolder);
@@ -393,10 +400,6 @@ namespace Downloader
             Logger.Log("Finding match for song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
             var found = await source.FindSong(song);
-            if (found == null)
-            {
-                return null;
-            } // we check for null here. you'd think if its null, it just returns! no, for some reason, it complains about it being null later.
 
             Logger.Log("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
@@ -453,6 +456,27 @@ namespace Downloader
 
             return dupes;
 
+        }
+
+        private bool ContainsMixedAlbums(Song[] songs)
+        {
+            if (songs.Length == 0)
+            {
+                return true;
+            }
+
+            var artist = songs[0].Artists[0];
+            var album = songs[0].Album;
+            
+            foreach (var song in songs)
+            {
+                if (song.Artists[0] != artist || song.Album != album)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void SetStatusText(string text, int taskId = -1)

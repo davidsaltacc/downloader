@@ -519,8 +519,12 @@ namespace Downloader.Api.Apis
             return (await _GetSongs(url)).Where(song => song.Title.Length > 0 && song.SongUrl.Length > 0).ToArray();
         }
 
-        public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
+        public async Task<string?> DownloadSong(Song? song, string folder, Action<int> onProgressUpdate)
         {
+            if (song == null)
+            {
+                return null;
+            }
             return await YtDlpApi.DownloadSong(song, song.SongUrl, folder, onProgressUpdate, HttpUtility.ParseQueryString(new Uri(song.SongUrl).Query).Get("v"));
         }
         

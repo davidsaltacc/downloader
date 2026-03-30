@@ -10,7 +10,7 @@ public interface ISongAudioSource : ISongApi
 {
     
     Task<Song?> FindSong(Song originalSong);
-    Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate);
+    Task<string?> DownloadSong(Song? song, string folder, Action<int> onProgressUpdate);
 
     public static ISongAudioSource? FromISongApi(ISongApi api)
     {

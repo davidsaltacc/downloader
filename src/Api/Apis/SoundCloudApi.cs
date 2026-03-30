@@ -193,8 +193,12 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
         return songs;
     }
 
-    public async Task<string?> DownloadSong(Song song, string folder, Action<int> onProgressUpdate)
+    public async Task<string?> DownloadSong(Song? song, string folder, Action<int> onProgressUpdate)
     {
+        if (song == null)
+        {
+            return null;
+        }
         return await YtDlpApi.DownloadSong(song, song.SongUrl, folder, onProgressUpdate, new Uri(song.SongUrl).AbsolutePath);
     }
 
