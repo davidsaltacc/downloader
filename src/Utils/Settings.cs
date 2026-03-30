@@ -39,7 +39,7 @@ public abstract class Settings
     public static readonly int DefaultThreads = 5;
     public static int Threads = DefaultThreads;
 
-    public static readonly string DefaultSongAudioSource = TidalApi.InstanceNotLossless.GetId();
+    public static readonly string DefaultSongAudioSource = TidalApi.InstanceHighQuality.GetId();
     public static string SongAudioSource = DefaultSongAudioSource;
 
     public static readonly bool DefaultCreatePlaylistFile = true;

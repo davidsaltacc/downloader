@@ -18,14 +18,17 @@ public class TidalApi : ISongAudioSource
 {
 
     private readonly bool _isLosslessInstance;
+    private readonly bool _isHighQualityInstance;
 
-    private TidalApi(bool lossless)
+    private TidalApi(bool lossless, bool high = true)
     {
         _isLosslessInstance = lossless;
+        _isHighQualityInstance = true;
     }
 
     private static TidalApi? _instanceLossless;
-    private static TidalApi? _instanceNotLossless;
+    private static TidalApi? _instanceHigh;
+    private static TidalApi? _instanceLower;
     
     public static TidalApi InstanceLossless
     {
@@ -35,18 +38,26 @@ public class TidalApi : ISongAudioSource
             return _instanceLossless;
         }
     }
-    public static TidalApi InstanceNotLossless
+    public static TidalApi InstanceHighQuality
     {
         get
         {
-            _instanceNotLossless ??= new TidalApi(false);
-            return _instanceNotLossless;
+            _instanceHigh ??= new TidalApi(false, true);
+            return _instanceHigh;
+        }
+    }
+    public static TidalApi InstanceLowerQuality
+    {
+        get
+        {
+            _instanceLower ??= new TidalApi(false, false);
+            return _instanceLower;
         }
     }
 
     private static readonly List<string> _blacklistedApis = [
     ];
-    private List<string> _apiUrls;
+    private List<string> _apiUrls = [];
 
     public async Task Init()
     {
@@ -195,12 +206,12 @@ public class TidalApi : ISongAudioSource
 
     public string GetName()
     {
-        return "Tidal (Hi-Fi API) " + (_isLosslessInstance ? "(Lossless)" : "(High Quality)");
+        return "Tidal (Hi-Fi API) " + (_isLosslessInstance ? "(Lossless)" :  _isHighQualityInstance ? "(High Quality)" : "(Lower Quality)");
     }
 
     public string GetId()
     {
-        return "tidal-" + (_isLosslessInstance ? "lossless" : "not-lossless");
+        return "tidal-" + (_isLosslessInstance ? "lossless" : _isHighQualityInstance ? "high" : "lower");
     }
 
     public bool UrlPartOfPlatform(string url)

@@ -14,8 +14,9 @@ public interface ISongApi
 
     public static readonly List<ISongApi> AllApis = [
         SpotifyApi.Instance, 
-        TidalApi.InstanceNotLossless,
         TidalApi.InstanceLossless,
+        TidalApi.InstanceHighQuality,
+        TidalApi.InstanceLowerQuality,
         YoutubeMusicApi.Instance,
         SoundCloudApi.Instance
     ];
