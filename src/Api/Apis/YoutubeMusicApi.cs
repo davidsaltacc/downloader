@@ -415,8 +415,7 @@ namespace Downloader.Api.Apis
                 if (int.TryParse(Helpers.NavigateJsonNode(
                         albumContent,
                         "contents", "twoColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content", 
-                        "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "title", "runs", 0, "text",
-                        "subtitle", "runs", 2, "text")?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
+                        "sectionListRenderer", "contents", 0, "musicResponsiveHeaderRenderer", "subtitle", "runs", 2, "text")?.ToString(), CultureInfo.InvariantCulture, out var yearParsed))
                 {
                     songData.ReleaseYear = yearParsed;
                 }

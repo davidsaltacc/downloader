@@ -280,6 +280,7 @@ namespace Downloader
                     //}
 
                     Logger.Log("Initializing APIs");
+                    SetStatusText("Initializing APIs");
                     
                     var audioSource = ISongAudioSource.FromISongApi(ISongApi.GetApiById(Settings.SongAudioSource) ?? ISongApi.GetApiById(Settings.DefaultSongAudioSource) ?? YoutubeMusicApi.Instance);
 
