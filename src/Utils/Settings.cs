@@ -57,7 +57,7 @@ public abstract class Settings
     public static readonly string DefaultDestinationSubfolder = "%artist%/%album%";
     public static string DestinationSubfolder = DefaultDestinationSubfolder;
     
-    public static readonly string DefaultPlaylistFolderName = "Downloaded Playlist - %hash%";
+    public static readonly string DefaultPlaylistFolderName = "Downloaded Playlist - %random%";
     public static string PlaylistFolderName = DefaultPlaylistFolderName;
 
 }
