@@ -325,7 +325,7 @@ public class TidalApi : ISongAudioSource
         }
 
         var trackId = song.SongUrl.Split("/track/")[1];
-        var quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : "HIGH";
+        var quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : (_isHighQualityInstance ? "HIGH" : "LOW");
 
         var response = await ApiRequest("/track/?id=" + trackId + "&quality=" + quality);
         
