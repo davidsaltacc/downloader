@@ -23,7 +23,7 @@ public class TidalApi : ISongAudioSource
     private TidalApi(bool lossless, bool high = true)
     {
         _isLosslessInstance = lossless;
-        _isHighQualityInstance = true;
+        _isHighQualityInstance = high;
     }
 
     private static TidalApi? _instanceLossless;
