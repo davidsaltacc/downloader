@@ -246,7 +246,7 @@ namespace Downloader
                     } 
                     
                     try {
-                        Path.GetFullPath(Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, new Song("dummy album", ["dummy artist"], "dummy song", -1, -1, -1, 1999, "dummy image url", "dummy song url", "dummy api"))));
+                        Path.GetFullPath(Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, new Song("dummy album", ["dummy artist"], "dummy song", -1, -1, -1, 1999, "dummy image url", "dummy song url", "dummy api"), 0)));
                     } catch {
                         SetStatusText("Subfolder configured in settings does not parse to valid folder.");
                         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -309,7 +309,7 @@ namespace Downloader
                     var tasks = new List<Task<string?>>();
                     _usedFilenames = [];
 
-                    async Task<string?> StartTask(Song song)
+                    async Task<string?> StartTask(Song song, int index)
                     {
                         await semaphore.WaitAsync();
                         availableSlots.TryDequeue(out var slotId);
@@ -318,7 +318,7 @@ namespace Downloader
                         
                         try
                         {
-                            var result = await ProcessSong(audioSource, song, slotId);
+                            var result = await ProcessSong(audioSource, song, slotId, index);
                             return result;
                         }
                         catch (Exception ex)
@@ -341,10 +341,12 @@ namespace Downloader
                         return null;
                     }
 
+                    var index = 0;
                     foreach (var song in songs)
                     {
 
-                        tasks.Add(StartTask(song));
+                        tasks.Add(StartTask(song, index));
+                        index += 1;
 
                     }
 
@@ -373,7 +375,7 @@ namespace Downloader
                     Logger.Log("Finished download");
 
                     var mixed = ContainsMixedAlbums(songs);
-                    var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], mixed)));
+                    var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], null, mixed)));
                     Directory.CreateDirectory(finalFolder); // create all folders leading up to the final folder
                     Directory.Delete(finalFolder, true); // delete last folder for moving files - i do this because i don't think .Move creates all folders leading up to the final folder 
                     Directory.Move("./downloaded/", finalFolder);
@@ -393,7 +395,7 @@ namespace Downloader
 
         private static List<string> _usedFilenames = [];
 
-        private async Task<string?> ProcessSong(ISongAudioSource source, Song song, int slotId) 
+        private async Task<string?> ProcessSong(ISongAudioSource source, Song song, int slotId, int index) 
         {
             
             _cts.Token.ThrowIfCancellationRequested();
@@ -417,7 +419,7 @@ namespace Downloader
             var reEncoded = await FFMpegApi.ReEncode(downloaded, Settings.Codec, true);
             SetStatusText("Encoded " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
 
-            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song) + "." + reEncoded.Split(".").Last();
+            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song, index) + "." + reEncoded.Split(".").Last();
             newFilename = "./downloaded/" + Helpers.SafeFileName(newFilename);
             int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)

@@ -277,7 +277,7 @@ namespace Downloader.Utils
             return Regex.Replace(oldName, @"[:\*\?""<>\|\x00-\x1F]", "_");
         }
 
-        public static string InsertSubstitutionsForPath(string baseString, Song? song, bool isPlaylist = false)
+        public static string InsertSubstitutionsForPath(string baseString, Song? song, int? index, bool isPlaylist = false)
         {
                 
             Dictionary<string, string> replacements;
@@ -290,7 +290,8 @@ namespace Downloader.Utils
             if (isPlaylist)
             {
                 replacements = new Dictionary<string, string>{
-                    { "random", MakeRandom() }
+                    { "random", MakeRandom() },
+                    { "index", index?.ToString() ?? "" }
                 };
             }
             else
@@ -301,6 +302,7 @@ namespace Downloader.Utils
                     { "title", song.Title.Length == 0 ? "Unknown Title" : song.Title },
                     { "album", song.Album.Length == 0 ? "Unknown Album" : song.Album },
                     { "year", song.ReleaseYear == -1 ? "Unknown Year" : song.ReleaseYear.ToString() },
+                    { "index", index?.ToString() ?? "" },
                     { "random", MakeRandom() }
                 };
             }

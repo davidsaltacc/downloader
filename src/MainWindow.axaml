@@ -167,7 +167,7 @@
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%album% - The name of the album.</TextBlock>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%year% - The release year of the song/album.</TextBlock>
 						    <TextBlock TextWrapping="Wrap" FontSize="12">%random% - An essentially random short string (to avoid file name collisions with, for example, playlist folders).</TextBlock>
-						    
+						    <TextBlock TextWrapping="Wrap" FontSize="12">%index% - The index of the track inside the downloaded album or playlist. Will be empty if substitute is used in a folder path.</TextBlock>
 					    </StackPanel>
 				    </ScrollViewer>
 			    </Border>
