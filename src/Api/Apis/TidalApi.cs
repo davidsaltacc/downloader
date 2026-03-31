@@ -55,14 +55,45 @@ public class TidalApi : ISongAudioSource
         }
     }
 
-    private static readonly List<string> _blacklistedApis = [
-    ];
-    private List<string> _apiUrls = [];
+    private string? _tidalAccessToken;
+    private List<string> _hifiApiUrls = [];
+    private readonly Dictionary<string, int> _apiUrlsRequestCounter = new();
+    private readonly Dictionary<string, int> _apiUrlsIssueCounter = new();
 
     public async Task Init()
     {
 
-        _apiUrls = [];
+        var content = await (await MainWindow.HttpClient.GetAsync(
+            "https://raw.githubusercontent.com/monochrome-music/monochrome/refs/heads/main/functions/track/%5Bid%5D.js")).Content.ReadAsStringAsync();
+
+        var clientId = content
+            .Split("\n")
+            .First(s => s.Replace(" ", "").Contains("CLIENT_ID="))
+            .Split("'")[1];
+        
+        var clientSecret = content
+            .Split("\n")
+            .First(s => s.Replace(" ", "").Contains("CLIENT_SECRET="))
+            .Split("'")[1];
+
+        var tokenResponse = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri("https://auth.tidal.com/v1/oauth2/token"),
+            Headers =
+            {
+                { "Authorization", "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(clientId + ":" + clientSecret)) }
+            },
+            Content = new FormUrlEncodedContent([
+                new KeyValuePair<string, string>("client_id", clientId),
+                new KeyValuePair<string, string>("client_secret", clientSecret),
+                new KeyValuePair<string, string>("grant_type", "client_credentials")
+            ])
+        });
+
+        _tidalAccessToken = JsonNode.Parse(await tokenResponse.Content.ReadAsStringAsync())?["access_token"]?.ToString();
+        
+        _hifiApiUrls = [];
 
         string[] apiUrlLists =
             [ "https://tidal-uptime.jiffy-puffs-1j.workers.dev/", "https://tidal-uptime.props-76styles.workers.dev/" ];
@@ -78,12 +109,12 @@ public class TidalApi : ISongAudioSource
             var content = await response.Content.ReadAsStringAsync();
             var data = JsonNode.Parse(content);
 
-            if (data?["api"] == null)
+            if (data?["streaming"] == null)
             {
                 return [];
             }
 
-            return data["api"]?.AsArray()
+            return data["streaming"]?.AsArray()
                 .Where(u => u != null)
                 .Select(u => u.AsObject().ToString())
                 .ToArray();
@@ -101,7 +132,7 @@ public class TidalApi : ISongAudioSource
                 var versionMaj = version?.Split(".")[0];
                 var versionMin = version?.Split(".")[1];
 
-                if ((versionMaj == "2" && Int32.Parse(versionMin ?? "0") < 7) || Int32.Parse(versionMaj ?? "0") < 2) // only versions 2.7 and above
+                if ((versionMaj == "2" && Int32.Parse(versionMin ?? "0") < 6) || Int32.Parse(versionMaj ?? "0") < 2) // only versions 2.6 and above
                 {
                     continue;
                 }
@@ -110,19 +141,9 @@ public class TidalApi : ISongAudioSource
                 {
                     continue;
                 }
-
-                if (_blacklistedApis.FirstOrDefault(part => apiUrl.Contains(part)) != null)
-                {
-                    return;
-                }
                 
                 using var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(20));
-
-                if (!new Uri(apiUrl).Host.EndsWith("monochrome.tf")) // only allow monochrome instances as they are the most maintained and therefore less prone to issues
-                {
-                    continue;
-                }
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
                 
                 var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
                 {
@@ -135,7 +156,7 @@ public class TidalApi : ISongAudioSource
                     continue;
                 }
 
-                if (await ApiRequest("/search/?s=" + HttpUtility.UrlEncode("song"), apiUrl) == null)
+                if (await ApiRequestHiFi("/search/?s=" + HttpUtility.UrlEncode("song"), apiUrl) == null)
                 {
                     continue;
                 }
@@ -146,25 +167,73 @@ public class TidalApi : ISongAudioSource
                     continue;
                 }
                 
-                _apiUrls.Add(apiUrl);
+                _hifiApiUrls.Add(apiUrl);
             }
+        }
+
+        _hifiApiUrls = _hifiApiUrls.Distinct().ToList();
+
+    }
+    
+    private async Task<JsonNode?> SearchForTrack(string name)
+    {
+        return (await ApiRequestDirect("/search/?query=" + HttpUtility.UrlEncode(name) + "&limit=25&offset=0&types=TRACKS&countryCode=US"))?["tracks"] ?? (await ApiRequestHiFi("/search/?s=" + HttpUtility.UrlEncode(name)))?["data"];
+    }
+    
+    private async Task<JsonNode?> GetAlbumMetadata(string id)
+    {
+        return await ApiRequestDirect("/albums/" + HttpUtility.UrlEncode(id) + "?countryCode=US") ?? (await ApiRequestHiFi("/album/?id=" + HttpUtility.UrlEncode(id)))?["data"];
+    }
+
+    private async Task<JsonNode?> ApiRequestDirect(string endpoint)
+    {
+
+        if (_tidalAccessToken == null)
+        {
+            return null;
+        }
+
+        var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+        {
+            RequestUri = new Uri("https://api.tidal.com/v1" + endpoint),
+            Method = HttpMethod.Get,
+            Headers =
+            {
+                { "Authorization", "Bearer " + _tidalAccessToken }
+            }
+        });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        
+        var content = await response.Content.ReadAsStringAsync();
+        
+        try
+        {
+            return JsonNode.Parse(content);
+        }
+        catch
+        {
+            return null;
         }
         
     }
+    
+    private static readonly Random _random = new();
 
-    private static readonly Random _random = new Random();
-
-    private async Task<JsonNode?> ApiRequest(string endpoint, string? fixedApiUrl = null, int maxRetries = 15)
+    private async Task<JsonNode?> ApiRequestHiFi(string endpoint, string? fixedApiUrl = null, int maxRetries = 15)
     {
 
         async Task<JsonNode?> GetResponse()
         {
-            if (_apiUrls.Count == 0 && fixedApiUrl == null)
+            if (_hifiApiUrls.Count == 0 && fixedApiUrl == null)
             {
                 return null;
             }
 
-            var apiUrl = fixedApiUrl ?? _apiUrls[_random.Next(0, _apiUrls.Count)]; // cycle to avoid rate limits 
+            var apiUrl = fixedApiUrl ?? _hifiApiUrls[_random.Next(0, _hifiApiUrls.Count)]; // cycle to avoid rate limits 
         
             var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
             {
@@ -172,10 +241,36 @@ public class TidalApi : ISongAudioSource
                 RequestUri = new Uri(apiUrl + endpoint)
             });
 
-            if (!response.IsSuccessStatusCode)
+            if (fixedApiUrl == null)
             {
-                Logger.Log("Noticed code " + response.StatusCode + " on api url " + apiUrl + endpoint);
-                return null;
+                _apiUrlsRequestCounter.TryAdd(apiUrl, 0);
+                _apiUrlsRequestCounter[apiUrl] += 1;
+            
+                if (!response.IsSuccessStatusCode)
+                {
+                    _apiUrlsIssueCounter.TryAdd(apiUrl, 0);
+                    _apiUrlsIssueCounter[apiUrl] += 1;
+                    if (_apiUrlsIssueCounter[apiUrl] > 10 && _hifiApiUrls.Count >= 4 && (float) _apiUrlsIssueCounter[apiUrl] / _apiUrlsRequestCounter[apiUrl] > 0.75)
+                    { // if over 75% of requests in the last 10 tries for this api url fail, and there are still more than 3 other api urls left, remove this one from being used
+                        _hifiApiUrls.Remove(apiUrl);
+                    }
+                    Logger.Log("Noticed code " + response.StatusCode + " on api url " + apiUrl + endpoint);
+                    return null;
+                }
+
+                if (_apiUrlsRequestCounter[apiUrl] > 10)
+                {
+                    _apiUrlsRequestCounter[apiUrl] = 0;
+                    _apiUrlsIssueCounter[apiUrl] = 0;
+                }
+            }
+            else
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    Logger.Log("Noticed code " + response.StatusCode + " on api url " + apiUrl + endpoint);
+                    return null;
+                }
             }
         
             var content = await response.Content.ReadAsStringAsync();
@@ -194,7 +289,7 @@ public class TidalApi : ISongAudioSource
         {
             var retries = 0;
             while (response == null && retries < maxRetries) {
-                await Task.Delay(5000);
+                await Task.Delay(2000);
                 response = await GetResponse();
                 retries++;
             }
@@ -230,7 +325,7 @@ public class TidalApi : ISongAudioSource
                 (json?["duration"]?.GetValue<int>() ?? -1/1000) * 1000,
                 json?["trackNumber"]?.GetValue<int>() ?? -1,
                 json?["volumeNumber"]?.GetValue<int>() ?? -1,
-                int.TryParse((await ApiRequest("/album/?id=" + json?["album"]?["id"]))?["data"]?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
+                int.TryParse((await GetAlbumMetadata(json?["album"]?["id"]?.ToString() ?? ""))?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
                 "https://resources.tidal.com/images/" + json?["album"]?["cover"]?.ToString().Replace("-", "/") + "/1280x1280.jpg",
                 json?["url"]?.ToString() ?? "",
                 GetId()
@@ -245,14 +340,14 @@ public class TidalApi : ISongAudioSource
     private async Task<List<Song>> Search(string query)
     {
 
-        var response = await ApiRequest("/search/?s=" + HttpUtility.UrlEncode(query));
+        var response = await SearchForTrack(query);
 
         if (response == null)
         {
             return [];
         }
 
-        var songs = response["data"]?["items"];
+        var songs = response["items"];
 
         if (songs == null)
         {
@@ -327,7 +422,7 @@ public class TidalApi : ISongAudioSource
         var trackId = song.SongUrl.Split("/track/")[1];
         var quality = _isLosslessInstance ? "HI_RES_LOSSLESS" : (_isHighQualityInstance ? "HIGH" : "LOW");
 
-        var response = await ApiRequest("/track/?id=" + trackId + "&quality=" + quality);
+        var response = await ApiRequestHiFi("/track/?id=" + trackId + "&quality=" + quality);
         
         if (response?["data"] == null)
         {

@@ -6,6 +6,8 @@ A tool to download songs, playlists and albums from various platforms.
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
 
+[Issues may rarely occur while downloading, just try again.](https://en.wikipedia.org/wiki/Ostrich_algorithm)
+
 [![Written By a Human Being](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scriptex/written-by-a-human-being/main/badge.json)](https://github.com/scriptex/written-by-a-human-being)
 
 ## Notable features
