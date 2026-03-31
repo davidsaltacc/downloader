@@ -36,7 +36,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 
 |                                                        |    Spotify[^1]     |   YouTube Music    |     SoundCloud     |        Tidal[^2]        |
 |--------------------------------------------------------|:------------------:|:------------------:|:------------------:|:-----------------------:|
-| Song Fetching                                          | :white_check_mark: | :white_check_mark: | :white_check_mark: |                         |
+| Song Fetching                                          | :white_check_mark: | :white_check_mark: | :white_check_mark: |   :white_check_mark:    |
 | Direct Audio Downloading                               |                    | :white_check_mark: | :white_check_mark: |   :white_check_mark:    |
 | Lossless Audio                                         |                    |                    |                    |   :white_check_mark:    |
 | Song Search for Downloading Other Platforms' Playlists |                    | :white_check_mark: |    Partial[^3]     |   :white_check_mark:    |
@@ -44,7 +44,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 | Song Metadata Addition                                 | :white_check_mark: | :white_check_mark: |      Partial       | :white_check_mark: [^6] |
 | Album Track Number Addition                            | :white_check_mark: | :white_check_mark: |                    |   :white_check_mark:    |
 | Album Disk Index Addition                              | :white_check_mark: |                    |                    |   :white_check_mark:    |
-| Playlist Fetching Works without Authentication         | :white_check_mark: | :white_check_mark: | :white_check_mark: |                         |
+| Playlist Fetching Works without Authentication         | :white_check_mark: | :white_check_mark: | :white_check_mark: |   :white_check_mark:    |
 | Downloading Works without Authentication               |                    | :white_check_mark: |    Partial[^4]     |   :white_check_mark:    |
 | Private Playlist Downloading[^5]                       |                    |                    |                    |                         |
 
