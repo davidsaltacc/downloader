@@ -14,7 +14,7 @@ using Downloader.Utils;
 
 namespace Downloader.Api.Apis;
 
-public class TidalApi : ISongAudioSource
+public class TidalApi : ISongAudioSource, ISongDataSource
 {
 
     private readonly bool _isLosslessInstance;
@@ -177,12 +177,105 @@ public class TidalApi : ISongAudioSource
     
     private async Task<JsonNode?> SearchForTrack(string name)
     {
-        return (await ApiRequestDirect("/search/?query=" + HttpUtility.UrlEncode(name) + "&limit=25&offset=0&types=TRACKS&countryCode=US"))?["tracks"] ?? (await ApiRequestHiFi("/search/?s=" + HttpUtility.UrlEncode(name)))?["data"];
+        return (await ApiRequestDirect("/search/?query=" + HttpUtility.UrlEncode(name) + "&limit=25&offset=0&types=TRACKS&countryCode=US"))?["tracks"] 
+               ?? (await ApiRequestHiFi("/search/?s=" + HttpUtility.UrlEncode(name)))?["data"];
     }
     
     private async Task<JsonNode?> GetAlbumMetadata(string id)
     {
-        return await ApiRequestDirect("/albums/" + HttpUtility.UrlEncode(id) + "?countryCode=US") ?? (await ApiRequestHiFi("/album/?id=" + HttpUtility.UrlEncode(id)))?["data"];
+        return await ApiRequestDirect("/albums/" + HttpUtility.UrlEncode(id) + "?countryCode=US") 
+               ?? (await ApiRequestHiFi("/album/?id=" + HttpUtility.UrlEncode(id) + "&offset=0&limit=1"))?["data"];
+    }
+    
+    private async Task<JsonNode?> GetPlaylistMetadata(string uuid)
+    {
+        return await ApiRequestDirect("/playlists/" + HttpUtility.UrlEncode(uuid) + "?countryCode=US") 
+               ?? (await ApiRequestHiFi("/playlist/?id=" + HttpUtility.UrlEncode(uuid) + "&offset=0&limit=1"))?["playlist"];
+    }
+    
+    private async Task<JsonNode?> GetTrackMetadata(string id)
+    {
+        return await ApiRequestDirect("/tracks/" + HttpUtility.UrlEncode(id) + "?countryCode=US") 
+               ?? (await ApiRequestHiFi("/info/?id=" + HttpUtility.UrlEncode(id)))?["data"];
+    }
+    
+    private async Task<List<JsonNode>> GetTracksInPlaylist(string uuid)
+    {
+
+        var metadata = await GetPlaylistMetadata(uuid);
+        if (metadata == null)
+        {
+            return [];
+        }
+
+        var trackCount = Int32.Parse(metadata["numberOfTracks"]?.ToString() ?? "-1");
+
+        List<JsonNode?> allSongs = [];
+        var offset = 0;
+
+        if (trackCount == -1)
+        {
+            allSongs.AddRange((await GetItems(0, 100))?.AsArray() ?? []);
+        }
+        else
+        {
+            while (allSongs.Count < trackCount)
+            {
+                var items = await GetItems(offset, 100);
+                allSongs.AddRange(items?.AsArray() ?? []);
+                offset += 100;
+            }
+        }
+
+        return allSongs.Where(s => s != null).ToList()!;
+
+        async Task<JsonNode?> GetItems(int off, int limit)
+        {
+            return (await ApiRequestDirect("/playlists/" + HttpUtility.UrlEncode(uuid) + "/items?countryCode=US&offset=" + off + "&limit=" + limit))?["items"]
+                ?? (await ApiRequestHiFi("/playlist/?id=" + HttpUtility.UrlEncode(uuid) + "&offset=" + off + "&limit=" + limit))?["items"];
+        }
+
+    }
+    
+    private async Task<(List<JsonNode>, int)> GetTracksInAlbum(string uuid)
+    {
+
+        var metadata = await GetAlbumMetadata(uuid);
+        if (metadata == null)
+        {
+            return ([], -1);
+        }
+
+        var trackCount = Int32.Parse(metadata["numberOfTracks"]?.ToString() ?? "-1");
+
+        List<JsonNode?> allSongs = [];
+        var offset = 0;
+
+        if (trackCount == -1)
+        {
+            allSongs.AddRange((await GetItems(0, 100))?.AsArray() ?? []);
+        }
+        else
+        {
+            while (allSongs.Count < trackCount)
+            {
+                var items = await GetItems(offset, 100);
+                allSongs.AddRange(items?.AsArray() ?? []);
+                offset += 100;
+            }
+        }
+
+        return (
+            allSongs.Where(s => s != null).ToList(),
+            int.TryParse(metadata["releaseDate"]?.ToString().Split("-")[0], out var year) ? year : -1 // return year to save a few duplicate requests
+        )!;
+
+        async Task<JsonNode?> GetItems(int off, int limit)
+        {
+            return (await ApiRequestDirect("/albums/" + HttpUtility.UrlEncode(uuid) + "/items?countryCode=US&offset=" + off + "&limit=" + limit))?["items"]
+                   ?? (await ApiRequestHiFi("/album/?id=" + HttpUtility.UrlEncode(uuid) + "&offset=" + off + "&limit=" + limit))?["data"]?["items"];
+        }
+
     }
 
     private async Task<JsonNode?> ApiRequestDirect(string endpoint)
@@ -314,7 +407,7 @@ public class TidalApi : ISongAudioSource
         return new Uri(url).Host.Contains("tidal", StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task<Song?> ParseSong(JsonNode? json)
+    private async Task<Song?> ParseSong(JsonNode? json, int? knownYear = null)
     {
         try
         {
@@ -325,7 +418,7 @@ public class TidalApi : ISongAudioSource
                 (json?["duration"]?.GetValue<int>() ?? -1/1000) * 1000,
                 json?["trackNumber"]?.GetValue<int>() ?? -1,
                 json?["volumeNumber"]?.GetValue<int>() ?? -1,
-                int.TryParse((await GetAlbumMetadata(json?["album"]?["id"]?.ToString() ?? ""))?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1,
+                knownYear ?? (int.TryParse((await GetAlbumMetadata(json?["album"]?["id"]?.ToString() ?? ""))?["releaseDate"]?.ToString().Split("-")[0], out int year) ? year : -1),
                 "https://resources.tidal.com/images/" + json?["album"]?["cover"]?.ToString().Replace("-", "/") + "/1280x1280.jpg",
                 json?["url"]?.ToString() ?? "",
                 GetId()
@@ -687,6 +780,48 @@ public class TidalApi : ISongAudioSource
         }
 
         return null;
+
+    }
+
+    public async Task<Song[]> GetSongs(string url)
+    {
+
+        var uri = new Uri(url);
+
+        if (uri.AbsolutePath.Split("/")[1] == "playlist")
+        {
+            return (await GetTracksInPlaylist(uri.AbsolutePath.Split("/")[2]))
+                .Select(async s => await ParseSong(s["item"]))
+                .Select(s => s.Result)
+                .Where(s => s != null)
+                .ToArray()!;
+        }
+        
+        if (uri.AbsolutePath.Split("/")[1] == "album" && uri.AbsolutePath.Split("/").Length <= 3)
+        {
+            var (albumTracks, year) = await GetTracksInAlbum(uri.AbsolutePath.Split("/")[2]);
+            return albumTracks
+                .Select(async s => await ParseSong(s["item"], year == -1 ? null : year))
+                .Select(s => s.Result)
+                .Where(s => s != null)
+                .ToArray()!;
+        }
+        
+        if ((uri.AbsolutePath.Split("/")[1] == "album" && uri.AbsolutePath.Split("/").Length > 3 && uri.AbsolutePath.Contains("track")) || uri.AbsolutePath.Split("/")[1] == "track")
+        {
+            var id = uri.AbsolutePath.Split("/")[1] == "track"
+                ? uri.AbsolutePath.Split("/")[2]
+                : uri.AbsolutePath.Split("/")[4];
+            var meta = await GetTrackMetadata(id);
+            if (meta == null)
+            {
+                return [];
+            }
+            var song = await ParseSong(meta);
+            return song == null ? [] : [ song ];
+        }
+
+        return [];
 
     }
     

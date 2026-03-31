@@ -65,7 +65,6 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Configurable Quality instead of best (downloading and saving)
 - Support for other platforms?
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
-- Downloading Tidal songs/albums/playlists directly
 - Playlist/Album track index in file name substitutes
 - Direct in-app search functionality
 - UI restructuring and user-friendliness
