@@ -1,7 +1,5 @@
 ﻿# Downloader (for Music)
 
-(update 24.03.2026 - i am a dumbass, i thought i had changed the repository to public since the beginning. here i was sending 404 links to people... anyway, its still under development before a stable version can be made and released. when will that be? no clue! i am aiming for april/early june to have a stable fully working release with an installer)
-
 A tool to download songs, playlists and albums from various platforms. 
 
 Fully configurable, creates local playlist files, supports various audio formats, parallel downloading, and more.
@@ -9,6 +7,12 @@ Fully configurable, creates local playlist files, supports various audio formats
 [Issues may rarely occur while downloading, just try again.](https://en.wikipedia.org/wiki/Ostrich_algorithm)
 
 [![Written By a Human Being](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scriptex/written-by-a-human-being/main/badge.json)](https://github.com/scriptex/written-by-a-human-being)
+
+# Download 
+
+| Installer                                                                                                               | Portable                                                                                                               |
+|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| [Download Latest (0.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1/Downloader.0.1.Installer.exe) | [Download Latest (0.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1/Downloader.0.1.Portable.exe) |
 
 ## Notable features
 
