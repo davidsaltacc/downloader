@@ -251,6 +251,11 @@ public class SpotifyApi : ISongDataSource
         return new Uri(url).Host.Contains("open.spotify", StringComparison.OrdinalIgnoreCase);
     }
 
+    public bool NeedsDependency(Dependency dependency, bool isAudioSource)
+    {
+        return false; // no dependencies directly
+    }
+
     public JsonNode? SendQueryApiRequest(string opName, object variables)
     {
         

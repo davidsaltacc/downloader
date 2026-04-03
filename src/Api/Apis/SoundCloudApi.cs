@@ -307,4 +307,9 @@ public class SoundCloudApi : ISongAudioSource, ISongDataSource
     {
         return new Uri(url).Host.Contains("soundcloud", StringComparison.OrdinalIgnoreCase);
     }
+
+    public bool NeedsDependency(Dependency dependency, bool isAudioSource)
+    {
+        return dependency == Dependency.YtDlp && isAudioSource;
+    }
 }

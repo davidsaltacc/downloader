@@ -531,7 +531,12 @@ namespace Downloader.Api.Apis
         {
             return new Uri(url).Host.Contains("music.youtube", StringComparison.OrdinalIgnoreCase);
         }
-        
+
+        public bool NeedsDependency(Dependency dependency, bool isAudioSource)
+        {
+            return (dependency == Dependency.YtDlp || dependency == Dependency.JavascriptRuntime) && isAudioSource;
+        }
+
         public string GetName()
         {
             return "Youtube Music";

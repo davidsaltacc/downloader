@@ -63,7 +63,6 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 ## Features yet to be added:
 
 - Authentication on more platforms
-- Volume Normalization
 - More Platforms to download from
 - Different playlist formats
 - Support for other platforms?
@@ -71,6 +70,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Direct in-app search functionality
 - UI restructuring and user-friendliness
 - Per-API settings (auth, quality, ...)
+- Switch back from Deno to QuickJS - I assumed a performance improvement, but I don't think it's that big
 - ... more?
 
 ## Not planned

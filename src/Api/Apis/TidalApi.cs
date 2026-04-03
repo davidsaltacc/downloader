@@ -407,6 +407,11 @@ public class TidalApi : ISongAudioSource, ISongDataSource
         return new Uri(url).Host.Contains("tidal", StringComparison.OrdinalIgnoreCase);
     }
 
+    public bool NeedsDependency(Dependency dependency, bool isAudioSource)
+    {
+        return false; // no direct dependencies
+    }
+
     private async Task<Song?> ParseSong(JsonNode? json, int? knownYear = null)
     {
         try

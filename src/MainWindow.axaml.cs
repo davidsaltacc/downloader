@@ -255,7 +255,14 @@ namespace Downloader
                         });
                         return;
                     }
+                    
+                    var audioSource = ISongAudioSource.FromISongApi(ISongApi.GetApiById(Settings.SongAudioSource) ?? ISongApi.GetApiById(Settings.DefaultSongAudioSource) ?? YoutubeMusicApi.Instance);
                         
+                    if (audioSource == null)
+                    {
+                        throw new Exception("Could not find audio source class");
+                    }
+                    
                     Logger.Log("Starting dependency download");
 
                     if (!await DependencyDownloader.EnsureFFmpegInstalled())
@@ -263,31 +270,39 @@ namespace Downloader
                         SetStatusText("Downloading FFmpeg");
                         await DependencyDownloader.DownloadLatestFFmpeg(progress => SetStatusText("Downloading FFmpeg - " + progress + "%"));
                     }
-                    if (!await DependencyDownloader.EnsureLatestYtDlpInstalled())
+
+                    if (dataSource.NeedsDependency(Dependency.YtDlp, false) || 
+                        audioSource.NeedsDependency(Dependency.YtDlp, true))
                     {
-                        SetStatusText("Downloading yt-dlp");
-                        await DependencyDownloader.DownloadLatestYtDlp(progress => SetStatusText("Downloading yt-dlp - " + progress + "%"));
+                        if (!await DependencyDownloader.EnsureLatestYtDlpInstalled())
+                        {
+                            SetStatusText("Downloading yt-dlp");
+                            await DependencyDownloader.DownloadLatestYtDlp(progress => SetStatusText("Downloading yt-dlp - " + progress + "%"));
+                        }
                     }
-                    if (!await DependencyDownloader.EnsureLatestDenoInstalled())
+
+                    if (dataSource.NeedsDependency(Dependency.JavascriptRuntime, false) ||
+                        audioSource.NeedsDependency(Dependency.JavascriptRuntime, true))
                     {
-                        SetStatusText("Downloading Deno");
-                        await DependencyDownloader.DownloadLatestDeno(progress => SetStatusText("Downloading Deno - " + progress + "%"));
+                        if (!await DependencyDownloader.EnsureLatestDenoInstalled())
+                        {
+                            SetStatusText("Downloading Deno");
+                            await DependencyDownloader.DownloadLatestDeno(progress => SetStatusText("Downloading Deno - " + progress + "%"));
+                        }
                     }
-                    //if (!await DependencyDownloader.EnsureLatestEmbeddablePythonInstalled())
-                    //{
-                    //    SetStatusText("Downloading Python");
-                    //    await DependencyDownloader.DownloadLatestEmbeddablePython(progress => SetStatusText("Downloading Python - " + progress + "%"));
-                    //}
+
+                    if (dataSource.NeedsDependency(Dependency.Python, false) ||
+                        audioSource.NeedsDependency(Dependency.Python, true))
+                    {
+                        if (!await DependencyDownloader.EnsureLatestEmbeddablePythonInstalled())
+                        {
+                            SetStatusText("Downloading Python");
+                            await DependencyDownloader.DownloadLatestEmbeddablePython(progress => SetStatusText("Downloading Python - " + progress + "%"));
+                        }
+                    }
 
                     Logger.Log("Initializing APIs");
                     SetStatusText("Initializing APIs");
-                    
-                    var audioSource = ISongAudioSource.FromISongApi(ISongApi.GetApiById(Settings.SongAudioSource) ?? ISongApi.GetApiById(Settings.DefaultSongAudioSource) ?? YoutubeMusicApi.Instance);
-
-                    if (audioSource == null)
-                    {
-                        throw new Exception("Could not find audio source class");
-                    }
                     
                     if (Directory.Exists("./downloaded")) {
                         Directory.Delete("./downloaded", true);
