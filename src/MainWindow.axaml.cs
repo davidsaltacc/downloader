@@ -284,10 +284,10 @@ namespace Downloader
                     if (dataSource.NeedsDependency(Dependency.JavascriptRuntime, false) ||
                         audioSource.NeedsDependency(Dependency.JavascriptRuntime, true))
                     {
-                        if (!await DependencyDownloader.EnsureLatestDenoInstalled())
+                        if (!await DependencyDownloader.EnsureLatestQjsInstalled())
                         {
-                            SetStatusText("Downloading Deno");
-                            await DependencyDownloader.DownloadLatestDeno(progress => SetStatusText("Downloading Deno - " + progress + "%"));
+                            SetStatusText("Downloading QuickJS");
+                            await DependencyDownloader.DownloadLatestQjs(progress => SetStatusText("Downloading QuickJS - " + progress + "%"));
                         }
                     }
 

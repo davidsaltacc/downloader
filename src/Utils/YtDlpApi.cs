@@ -22,7 +22,7 @@ namespace Downloader.Utils
                 {
                     FileName = "yt-dlp.exe",
                     WorkingDirectory = Environment.CurrentDirectory,
-                    Arguments = $"--no-simulate --quiet --no-warnings --js-runtimes deno --no-part --newline --progress --print filename -o \"{fullFilePath}.%(ext)s\" -f \"ba/b\" \"{downloadUrl}\"",
+                    Arguments = $"--no-simulate --quiet --no-warnings --no-js-runtimes --js-runtimes quickjs --no-part --newline --progress --print filename -o \"{fullFilePath}.%(ext)s\" -f \"ba/b\" \"{downloadUrl}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -42,7 +42,7 @@ namespace Downloader.Utils
                     break;
                 }
                 var data = Regex.Replace(line, @"\s+", " ").Split(" ");
-                if (!float.TryParse(data[1].Replace("%", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var percent))
+                if (!float.TryParse(data[0].Replace("%", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var percent))
                 {
                     if (filename.Length == 0)
                     {
