@@ -144,13 +144,21 @@ public class TidalApi : ISongAudioSource, ISongDataSource
                 
                 using var cts = new CancellationTokenSource();
                 cts.CancelAfter(TimeSpan.FromSeconds(10));
-                
-                var response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+
+                HttpResponseMessage response;
+                try
                 {
-                    Method = HttpMethod.Get,
-                    RequestUri = new Uri(apiUrl + "/track/?id=55391801")
-                }, cts.Token);
-                
+                    response = await MainWindow.HttpClient.SendAsync(new HttpRequestMessage
+                    {
+                        Method = HttpMethod.Get,
+                        RequestUri = new Uri(apiUrl + "/track/?id=55391801")
+                    }, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    continue;
+                }
+
                 if (!response.IsSuccessStatusCode)
                 {
                     continue;
