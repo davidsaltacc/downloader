@@ -62,6 +62,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 
 ## Stuff yet to be added:
 
+- Download wizard configuring ideal settings for non-power-users
 - Config saving (to file)
 - Authentication on more platforms
 - More Platforms to download from
@@ -70,7 +71,6 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 - Direct in-app search functionality
 - UI restructuring and user-friendliness
 - Per-API settings (auth, quality, ...)
-- Switch back from Deno to QuickJS - I assumed a performance improvement, but I don't think it's that big
 - ... more?
 
 ## Not planned
