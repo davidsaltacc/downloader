@@ -31,6 +31,11 @@ public abstract class Settings
         { "original", "" }
     };
 
+    public static readonly List<string> AllPlaylistFormats = [
+        "M3U8",
+        "XSPF"
+    ];
+
     public static readonly List<string> AllSongAudioSources = ISongAudioSource.AllSongAudioSources.ConvertAll(s => s.GetId());
     
     public static readonly string DefaultCodec = "original";
@@ -44,6 +49,9 @@ public abstract class Settings
 
     public static readonly bool DefaultCreatePlaylistFile = true;
     public static bool CreatePlaylistFile = DefaultCreatePlaylistFile;
+    
+    public static readonly string DefaultPlaylistFileFormat = "M3U8";
+    public static string PlaylistFileFormat = DefaultPlaylistFileFormat;
     
     public static readonly string DefaultPlaylistFileName = "! playlist";
     public static string PlaylistFileName = DefaultPlaylistFileName;

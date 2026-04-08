@@ -6,12 +6,12 @@ using Downloader.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls.Documents;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -55,6 +55,14 @@ namespace Downloader
                 {
                     Content = ISongApi.GetApiById(api)?.GetName() ?? "",
                     Name = "AudioSourceSelection_" + api
+                });
+            }
+            
+            foreach (var format in Settings.AllPlaylistFormats)
+            {
+                PlaylistFileFormatSelectionBox.Items.Add(new ComboBoxItem
+                {
+                    Content = format
                 });
             }
 
@@ -145,6 +153,13 @@ namespace Downloader
                 Settings.PlaylistFileName = PlaylistFileNameTextBox.Text ?? Settings.DefaultPlaylistFileName;
                 Logger.Log("Set playlist file name to " + Settings.PlaylistFileName);
             };
+            
+            PlaylistFileFormatSelectionBox.SelectedIndex = Settings.AllPlaylistFormats.IndexOf(Settings.PlaylistFileFormat);
+            PlaylistFileFormatSelectionBox.SelectionChanged += (_, args) =>
+            {
+                Settings.PlaylistFileFormat = ((ComboBoxItem?) args.AddedItems[0])?.Content?.ToString() ?? Settings.DefaultPlaylistFileFormat;
+                Logger.Log("Selected playlist file format " + Settings.PlaylistFileFormat);
+            };
 
         }
 
@@ -184,6 +199,7 @@ namespace Downloader
                     }
                     else
                     {
+                        Logger.Log("Cancelled: " + ex.StackTrace);
                         SetStatusText("Cancelled");
                         _ignoreStatusTextChanges = false;
                         _cts = new CancellationTokenSource();
@@ -366,6 +382,8 @@ namespace Downloader
                     }
 
                     List<string?> newFilenames = [.. await Task.WhenAll(tasks)];
+                    
+                    var mixed = ContainsMixedAlbums(songs);
 
                     if (Settings.CreatePlaylistFile && songs.Length > 1)
                     {
@@ -373,27 +391,41 @@ namespace Downloader
                         Logger.Log("Writing playlist to file");
                         SetStatusText("Writing playlist");
 
-                        var playlist = "#EXTM3U";
-                        foreach (var name in newFilenames)
+                        var paths = newFilenames.Select(file => Path.GetFileName(file)).ToArray();
+                        var playlist = Settings.PlaylistFileFormat switch
                         {
-                            playlist += "\n" + Path.GetFileName(name);
+                            "M3U8" => Helpers.SaveM3U8Playlist(paths),
+                            "XSPF" => Helpers.SaveXSPFPlaylist(paths, songs, !mixed),
+                            _ => null
+                        };
+
+                        if (playlist != null)
+                        {
+                            
+                            await File.WriteAllTextAsync("./downloaded/" + Helpers.SafeFileName(Settings.PlaylistFileName) + Settings.PlaylistFileFormat switch
+                            {
+                                "M3U8" => ".m3u8",
+                                "XSPF" => ".xspf",
+                                _ => null
+                            }, playlist);
                         }
 
-                        await File.WriteAllTextAsync("./downloaded/" + Helpers.SafeFileName(Settings.PlaylistFileName) + ".m3u8", playlist);
                     }
                     else if (Settings.CreatePlaylistFile)
                     {
                         Logger.Log("Skipping playlist creation due to playlist only containing single song");
                     }
 
-                    SetStatusText("Done");
-                    Logger.Log("Finished download");
+                    SetStatusText("Moving files");
+                    Logger.Log("Moving files");
 
-                    var mixed = ContainsMixedAlbums(songs);
                     var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], null, mixed)));
                     Directory.CreateDirectory(finalFolder); // create all folders leading up to the final folder
                     Directory.Delete(finalFolder, true); // delete last folder for moving files - i do this because i don't think .Move creates all folders leading up to the final folder 
                     Directory.Move("./downloaded/", finalFolder);
+                    
+                    SetStatusText("Done");
+                    Logger.Log("Download finished");
 
                 } else
                 {

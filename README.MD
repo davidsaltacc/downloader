@@ -60,11 +60,11 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 
 [^6]: Even if other platforms provide original metadata, downloading from Tidal will overwrite that metadata with the one from Tidal, as it may be more accurate.
 
-## Features yet to be added:
+## Stuff yet to be added:
 
+- Config saving (to file)
 - Authentication on more platforms
 - More Platforms to download from
-- Different playlist formats
 - Support for other platforms?
 - Maybe playlist conversion from platform to platform (moving to a more multitool-approach)
 - Direct in-app search functionality

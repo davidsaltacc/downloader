@@ -321,6 +321,62 @@ namespace Downloader.Utils
                 return Convert.ToHexString(b);
             }
         }
+        
+        public static string SaveM3U8Playlist(string?[] filenames)
+        {
+            var playlist = "#EXTM3U";
+            foreach (var name in filenames)
+            {
+                if (name != null)
+                {
+                    playlist += "\n" + Path.GetFileName(name);
+                }
+            }
+
+            return playlist;
+        }
+
+        public static string SaveXSPFPlaylist(string?[] filenames, Song?[] metadata, bool isAlbum)
+        {
+            var playlist = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                           "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n";
+
+            if (isAlbum)
+            {
+                playlist += "<title>" + metadata[0]?.Album + "</title>\n" +
+                            "<creator>" + metadata[0]?.Artists[0] + "</creator>\n";
+            }
+        
+            playlist += "<trackList>\n";
+
+            var i = 0;
+            foreach (var name in filenames)
+            {
+                if (name != null)
+                {
+                    playlist += "<track>\n" +
+                                "<location>" + new Uri(new Uri("file://"), name).AbsolutePath + "</location>\n";
+
+                    if (metadata[i] != null)
+                    {
+                        playlist += "<creator>" + string.Join(", ", metadata[i]!.Artists) + "</creator>\n" +
+                                    "<album>" + metadata[i]!.Album + "</album>\n" +
+                                    "<title>" + metadata[i]!.Title + "</title>\n" +
+                                    "<duration>" + metadata[i]!.DurationMs + "</duration>\n" +
+                                    "<image>" + metadata[i]!.ImageUrl + "</image>\n" +
+                                    "<info>" + metadata[i]!.SongUrl + "</info>\n";
+                    }
+                
+                    playlist += "</track>\n";
+                }
+
+                i++;
+            }
+        
+            return playlist + "</trackList>\n" +
+                   "</playlist>";
+        }
+        
     }
     
 }
