@@ -277,10 +277,18 @@ namespace Downloader.Utils
             return Regex.Replace(oldName, @"[:\*\?""<>\|\x00-\x1F]", "_");
         }
 
-        public static string InsertSubstitutionsForPath(string baseString, Song? song, int? index, bool isPlaylist = false)
+        public static string InsertSubstitutionsForPath(string baseString, Song? song, int? index, int? totalSongs, bool isPlaylist = false)
         {
                 
             Dictionary<string, string> replacements;
+
+            if (index != null && totalSongs == null)
+            {
+                throw new Exception("cannot supply index without total song count");
+            }
+
+            var indexProper = index.ToString();
+            indexProper = indexProper?.PadLeft(totalSongs.ToString()?.Length ?? indexProper.Length, '0');
             
             if (!isPlaylist && song == null)
             {
@@ -291,7 +299,7 @@ namespace Downloader.Utils
             {
                 replacements = new Dictionary<string, string>{
                     { "random", MakeRandom() },
-                    { "index", index?.ToString() ?? "" }
+                    { "index", indexProper ?? "" }
                 };
             }
             else
@@ -302,7 +310,7 @@ namespace Downloader.Utils
                     { "title", song.Title.Length == 0 ? "Unknown Title" : song.Title },
                     { "album", song.Album.Length == 0 ? "Unknown Album" : song.Album },
                     { "year", song.ReleaseYear == -1 ? "Unknown Year" : song.ReleaseYear.ToString() },
-                    { "index", index?.ToString() ?? "" },
+                    { "index", indexProper ?? "" },
                     { "random", MakeRandom() }
                 };
             }

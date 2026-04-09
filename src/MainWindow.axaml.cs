@@ -262,7 +262,7 @@ namespace Downloader
                     } 
                     
                     try {
-                        Path.GetFullPath(Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, new Song("dummy album", ["dummy artist"], "dummy song", -1, -1, -1, 1999, "dummy image url", "dummy song url", "dummy api"), 0)));
+                        Path.GetFullPath(Path.Join(Settings.DestinationFolder, Helpers.InsertSubstitutionsForPath(Settings.DestinationSubfolder, new Song("dummy album", ["dummy artist"], "dummy song", -1, -1, -1, 1999, "dummy image url", "dummy song url", "dummy api"), 0, 1)));
                     } catch {
                         SetStatusText("Subfolder configured in settings does not parse to valid folder.");
                         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -340,7 +340,7 @@ namespace Downloader
                     var tasks = new List<Task<string?>>();
                     _usedFilenames = [];
 
-                    async Task<string?> StartTask(Song song, int index)
+                    async Task<string?> StartTask(Song song, int index, int totalSongs)
                     {
                         await semaphore.WaitAsync();
                         availableSlots.TryDequeue(out var slotId);
@@ -349,7 +349,7 @@ namespace Downloader
                         
                         try
                         {
-                            var result = await ProcessSong(audioSource, song, slotId, index);
+                            var result = await ProcessSong(audioSource, song, slotId, index, totalSongs);
                             return result;
                         }
                         catch (Exception ex)
@@ -376,7 +376,7 @@ namespace Downloader
                     foreach (var song in songs)
                     {
 
-                        tasks.Add(StartTask(song, index));
+                        tasks.Add(StartTask(song, index, songs.Length));
                         index += 1;
 
                     }
@@ -419,7 +419,7 @@ namespace Downloader
                     SetStatusText("Moving files");
                     Logger.Log("Moving files");
 
-                    var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], null, mixed)));
+                    var finalFolder = Path.Join(Settings.DestinationFolder, Helpers.SafeFolderName(Helpers.InsertSubstitutionsForPath(mixed ? Settings.PlaylistFolderName : Settings.DestinationSubfolder, mixed ? null : songs[0], null, songs.Length, mixed)));
                     Directory.CreateDirectory(finalFolder); // create all folders leading up to the final folder
                     Directory.Delete(finalFolder, true); // delete last folder for moving files - i do this because i don't think .Move creates all folders leading up to the final folder 
                     Directory.Move("./downloaded/", finalFolder);
@@ -442,7 +442,7 @@ namespace Downloader
 
         private static List<string> _usedFilenames = [];
 
-        private async Task<string?> ProcessSong(ISongAudioSource source, Song song, int slotId, int index) 
+        private async Task<string?> ProcessSong(ISongAudioSource source, Song song, int slotId, int index, int totalSongs) 
         {
             
             _cts.Token.ThrowIfCancellationRequested();
@@ -450,6 +450,10 @@ namespace Downloader
             Logger.Log("Finding match for song " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Finding match for " + String.Join(", ", song.Artists) + " - " + song.Title, slotId); 
             var found = await source.FindSong(song);
+            if (found == null)
+            {
+                return null;
+            }
 
             Logger.Log("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title + " in slot " + slotId);
             SetStatusText("Downloading " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
@@ -466,7 +470,7 @@ namespace Downloader
             var reEncoded = await FFMpegApi.ReEncode(downloaded, Settings.Codec, true);
             SetStatusText("Encoded " + String.Join(", ", song.Artists) + " - " + song.Title, slotId);
 
-            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song, index) + "." + reEncoded.Split(".").Last();
+            var newFilename = Helpers.InsertSubstitutionsForPath(Settings.SongFileName, song, index, totalSongs) + "." + reEncoded.Split(".").Last();
             newFilename = "./downloaded/" + Helpers.SafeFileName(newFilename);
             int dupes = HowManyDupes(_usedFilenames, newFilename);
             if (dupes > 0)
