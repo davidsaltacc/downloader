@@ -10,9 +10,9 @@ Fully configurable, creates local playlist files, supports various audio formats
 
 # Download 
 
-| Installer                                                                                                               | Portable                                                                                                               |
-|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| [Download Latest (0.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1/Downloader.0.1.Installer.exe) | [Download Latest (0.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1/Downloader.0.1.Portable.exe) |
+| Installer                                                                                                                     | Portable                                                                                                                     |
+|-------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| [Download Latest (0.1.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1.1/Downloader.0.1.1.Installer.exe) | [Download Latest (0.1.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1.1/Downloader.0.1.1.Portable.exe) |
 
 ## Notable features
 
@@ -62,6 +62,7 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 
 ## Stuff yet to be added:
 
+- Auto-Updater
 - Song caching during downloading (if an album gets fetched, add all songs to cache, then instead of searching platform directly, first search cache)
 - Download wizard configuring ideal settings for non-power-users
 - Config saving (to file)
