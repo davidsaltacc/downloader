@@ -63,7 +63,6 @@ This is for educational purposes exclusively. I do not encourage piracy or any i
 ## Stuff yet to be added:
 
 - Song caching during downloading (if an album gets fetched, add all songs to cache, then instead of searching platform directly, first search cache)
-- Handle certain Unicode characters in filenames properly (for example, ô)
 - Download wizard configuring ideal settings for non-power-users
 - Config saving (to file)
 - Authentication on more platforms

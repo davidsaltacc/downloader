@@ -110,7 +110,7 @@ public class TlsSession : IDisposable
         
         var requestJson = JsonSerializer.Serialize(req, _opts);
         var responsePtr = TlsSession.request(requestJson);
-        var responseJson = Marshal.PtrToStringAnsi(responsePtr) ?? "{}";
+        var responseJson = Marshal.PtrToStringUTF8(responsePtr) ?? "{}";
 
         var response = JsonSerializer.Deserialize<TlsResponse>(responseJson, _opts);
 
