@@ -10,9 +10,9 @@ Fully configurable, creates local playlist files, supports various audio formats
 
 # Download 
 
-| Installer                                                                                                                     | Portable                                                                                                                     |
-|-------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| [Download Latest (0.1.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1.1/Downloader.0.1.1.Installer.exe) | [Download Latest (0.1.1)](https://github.com/davidsaltacc/downloader/releases/download/v0.1.1/Downloader.0.1.1.Portable.exe) |
+| Installer                                                                                                       | Portable                                                                                                       |
+|-----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| [Download Latest](https://github.com/davidsaltacc/downloader/releases/download/latest/Downloader.Installer.exe) | [Download Latest](https://github.com/davidsaltacc/downloader/releases/download/latest/Downloader.Portable.zip) |
 
 ## Notable features
 
