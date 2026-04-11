@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -8,6 +9,7 @@ namespace Downloader.Utils;
 
 public class FFMpegApi
 {
+    public static List<Process> ffmpegProcesses = [];
 
     public static async Task<string> DetectAudioCodec(string file)
     {
@@ -77,12 +79,16 @@ public class FFMpegApi
                 CreateNoWindow = true
             }
         };
+        
+        ffmpegProcesses.Add(ffmpegProcess);
 
         var ffmpegOut = "";
         ffmpegProcess.ErrorDataReceived += (_, a) => ffmpegOut += a.Data ?? "";
         ffmpegProcess.Start();
         ffmpegProcess.BeginErrorReadLine();
         await ffmpegProcess.WaitForExitAsync();
+
+        ffmpegProcesses.Remove(ffmpegProcess);
         
         Logger.Log("FFmpeg output: " + ffmpegOut); 
         

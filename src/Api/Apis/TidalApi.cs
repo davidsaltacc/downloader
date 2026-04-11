@@ -545,7 +545,12 @@ public class TidalApi : ISongAudioSource, ISongDataSource
                 return null;
             }
 
-            var downloaded = await Helpers.DownloadFile(decodedManifest["urls"]?[0]?.ToString(), folder, onProgressUpdate);
+            var url = decodedManifest["urls"]?[0]?.ToString();
+            if (url == null)
+            {
+                return null;
+            }
+            var downloaded = await Helpers.DownloadFile(url, folder, onProgressUpdate, trackId + "." + Path.GetFileName(new Uri(url).AbsolutePath).Split(".").Last());
 
             return downloaded; 
 

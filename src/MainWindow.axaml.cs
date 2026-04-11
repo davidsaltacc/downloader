@@ -11,7 +11,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Controls.Documents;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -23,21 +22,30 @@ namespace Downloader
     public partial class MainWindow : Window
     {
         
-        private static HttpClientHandler _httpClientHandler = new HttpClientHandler();
+        private static HttpClientHandler _httpClientHandler = new ();
         static MainWindow()
         {
             _httpClientHandler.AllowAutoRedirect = true;
         }
         
         public static readonly HttpClient HttpClient = new(_httpClientHandler);
-        private static bool _ignoreStatusTextChanges = false;
+        private static bool _ignoreStatusTextChanges;
 
         public MainWindow()
         {
+            
 
             Logger.Init();
             InitializeComponent();
             DataContext = this;
+            
+            AppDomain.CurrentDomain.ProcessExit += (_, __) =>
+            {
+                foreach (var ffmpegProcess in FFMpegApi.ffmpegProcesses)
+                {
+                    ffmpegProcess.Kill(); // sometimes they just get stuck?
+                }
+            };
             
             TitleBarIcon.Source = new Bitmap("icon.ico");
             
